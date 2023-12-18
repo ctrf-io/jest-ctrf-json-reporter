@@ -1,0 +1,124 @@
+{
+  "results": {
+    "tool": {
+      "name": "jest"
+    },
+    "summary": {
+      "tests": 21,
+      "passed": 21,
+      "failed": 0,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "start": 1702935125546,
+      "stop": 1702935126303
+    },
+    "tests": [
+      {
+        "name": "GenerateCtrfReport Set config options filename should set filename from reporterConfigOptions if present",
+        "duration": 1,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport Set config options filename should use default filename if reporterConfigOptions filename is not present",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport setFilename should add .json extension if none provided",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport setFilename should keep .json extension if already provided",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport setFilename should append .json to any other extensions",
+        "duration": 1,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should update the ctrfReport with required test properties",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test \"Test 1\" with status \"passed\" and duration 100",
+        "duration": 1,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test \"Test 2\" with status \"failed\" and duration 200",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test \"Test 3\" with status \"skipped\" and duration 300",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test \"Test 4\" with status \"pending\" and duration 50",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test with status \"todo\" as other",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test with status \"disabled\" as other",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateCtrfTestResultsFromTestResult should correctly update the ctrfReport for test with status \"focused\" as other",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update the total tests count",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status passed",
+        "duration": 1,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status failed",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status skipped",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status pending",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status todo",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status disabled",
+        "duration": 0,
+        "status": "passed"
+      },
+      {
+        "name": "GenerateCtrfReport updateTotalsFromTestResult should update for status focused",
+        "duration": 3,
+        "status": "passed"
+      }
+    ]
+  }
+}
