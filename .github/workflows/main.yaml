@@ -22,7 +22,7 @@ jobs:
           echo "OS_PLATFORM=$(uname -s)" >> $GITHUB_ENV
           echo "OS_RELEASE=$(uname -r)" >> $GITHUB_ENV
           echo "OS_VERSION=$(uname -v)" >> $GITHUB_ENV
-          echo "BUILD_NAME=$RUNNER_TRACKING_ID" >> $GITHUB_ENV
+          echo "BUILD_NAME=$GITHUB_WORKFLOW" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
 
       - run: npm ci
