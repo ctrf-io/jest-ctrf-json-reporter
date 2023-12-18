@@ -19,7 +19,7 @@ A JSON test report schema that is the same structure, no matter which testing to
 npm install --save-dev jest-ctrf-json-reporter
 ```
 
-Add the reporter to your Jest.config.ts file:
+Add the reporter to your jest.config.js file:
 
 ```javascript
  reporters: [
@@ -34,7 +34,7 @@ Run your tests:
 npx jest
 ```
 
-You'll find a JSON file named `ctrf-report.json` in the root of your project.
+You'll find a JSON file named `ctrf-report.json` in the `ctrf` directory.
 
 ## Reporter Options
 
