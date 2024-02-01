@@ -180,7 +180,7 @@ class GenerateCtrfReport implements Reporter {
   private writeReportToFile(data: CtrfReport): void {
     const filePath = path.join(
       this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
-      this.reporterConfigOptions.outputFile ?? this.defaultOutputFile
+      this.filename
     )
     const str = JSON.stringify(data, null, 2)
     try {
@@ -188,8 +188,8 @@ class GenerateCtrfReport implements Reporter {
       console.log(
         `${this.reporterName}: successfully written ctrf json to %s/%s`,
         this.reporterConfigOptions.outputDir,
-        this.reporterConfigOptions.outputFile
-      )
+        this.filename
+        )
     } catch (error) {
       console.error(`Error writing ctrf json report:, ${String(error)}`)
     }
