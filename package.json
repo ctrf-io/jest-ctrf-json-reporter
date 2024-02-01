@@ -1,5 +1,5 @@
 {
-  "name": "jest-ctrf-json-report",
+  "name": "jest-ctrf-json-reporter",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
