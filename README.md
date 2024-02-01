@@ -22,10 +22,10 @@ npm install --save-dev jest-ctrf-json-reporter
 Add the reporter to your jest.config.js file:
 
 ```javascript
- reporters: [
-    'default',
-    ['jest-ctrf-json-reporter', {}],
-  ],
+reporters: [
+  'default',
+  ['jest-ctrf-json-reporter', {}],
+],
 ```
 
 Run your tests:
@@ -65,5 +65,3 @@ The test object in the report includes the following [CTRF properties](https://c
 | `name`     | String | Required | The name of the test.                                                               |
 | `status`   | String | Required | The outcome of the test. One of: `passed`, `failed`, `skipped`, `pending`, `other`. |
 | `duration` | Number | Required | The time taken for the test execution, in milliseconds.                             |
-
-|
