@@ -42,18 +42,18 @@ The reporter supports several configuration options:
 
 ```javascript
 reporter: [
-    ['jest-ctrf-json-reporter', {
-        outputFile: 'custom-name.json', // Optional: Output file name. Defaults to 'ctrf-report.json'.
-        outputDir: 'custom-directory',  // Optional: Output directory path. Defaults to 'ctrf'.
-        appName: 'MyApp',               // Optional: Specify the name of the application under test.
-        appVersion: '1.0.0',            // Optional: Specify the version of the application under test.
-        osPlatform: 'linux',            // Optional: Specify the OS platform.
-        osRelease: '18.04',             // Optional: Specify the OS release version.
-        osVersion: '5.4.0',             // Optional: Specify the OS version.
-        buildName: 'MyApp Build',       // Optional: Specify the build name.
-        buildNumber: '100',             // Optional: Specify the build number.
-    }]
-  ],
+  ['jest-ctrf-json-reporter', {
+    outputFile: 'custom-name.json', // Optional: Output file name. Defaults to 'ctrf-report.json'.
+    outputDir: 'custom-directory',  // Optional: Output directory path. Defaults to 'ctrf'.
+    appName: 'MyApp',               // Optional: Specify the name of the application under test.
+    appVersion: '1.0.0',            // Optional: Specify the version of the application under test.
+    osPlatform: 'linux',            // Optional: Specify the OS platform.
+    osRelease: '18.04',             // Optional: Specify the OS release version.
+    osVersion: '5.4.0',             // Optional: Specify the OS version.
+    buildName: 'MyApp Build',       // Optional: Specify the build name.
+    buildNumber: '100',             // Optional: Specify the build number.
+  }]
+],
 ```
 
 ## Test Object Properties
