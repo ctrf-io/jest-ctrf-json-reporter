@@ -1,10 +1,16 @@
-import { type TestResult, type Test, type Status } from '@jest/test-result'
+import {
+  type TestResult,
+  type Test,
+  type Status,
+  type AssertionResult,
+} from '@jest/test-result'
 import { type Reporter, type ReporterContext } from '@jest/reporters'
 import { type Config } from '@jest/types'
 import {
   type CtrfReport,
   type CtrfTestState,
   type CtrfEnvironment,
+  type CtrfTest,
 } from '../types/ctrf'
 
 import * as fs from 'fs'
@@ -115,12 +121,34 @@ class GenerateCtrfReport implements Reporter {
 
   private updateCtrfTestResultsFromTestResult(testResult: TestResult): void {
     testResult.testResults.forEach((testCaseResult) => {
-      this.ctrfReport.results.tests.push({
+      const test: CtrfTest = {
         name: testCaseResult.fullName,
         duration: testCaseResult.duration ?? 0,
         status: this.mapStatus(testCaseResult.status),
-      })
+      }
+
+      test.message = this.extractFailureDetails(testCaseResult).message
+      test.trace = this.extractFailureDetails(testCaseResult).trace
+
+      this.ctrfReport.results.tests.push(test)
     })
+  }
+
+  extractFailureDetails(testResult: AssertionResult): Partial<CtrfTest> {
+    if (
+      testResult.status === 'failed' &&
+      testResult.failureMessages !== undefined
+    ) {
+      const failureDetails: Partial<CtrfTest> = {}
+      if (testResult.failureMessages !== undefined) {
+        failureDetails.message = testResult.failureMessages.join('\r\n')
+      }
+      if (testResult.failureDetails !== undefined) {
+        failureDetails.trace = testResult.failureMessages.join('\r\n')
+      }
+      return failureDetails
+    }
+    return {}
   }
 
   private updateTotalsFromTestResult(testResult: TestResult): void {
