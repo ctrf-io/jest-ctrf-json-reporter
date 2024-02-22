@@ -189,7 +189,7 @@ class GenerateCtrfReport implements Reporter {
         `${this.reporterName}: successfully written ctrf json to %s/%s`,
         this.reporterConfigOptions.outputDir,
         this.filename
-        )
+      )
     } catch (error) {
       console.error(`Error writing ctrf json report:, ${String(error)}`)
     }
