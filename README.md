@@ -107,3 +107,7 @@ The test object in the report includes the following [CTRF properties](https://c
 | `duration` | Number | Required | The time taken for the test execution, in milliseconds.                             |
 | `message`  | String | Optional | The failure message if the test failed.                                             |
 | `trace`    | String | Optional | The stack trace captured if the test failed.                                        |
+
+## Support Us
+
+If you find this project useful, consider giving it a GitHub star ⭐ It means a lot to us.
