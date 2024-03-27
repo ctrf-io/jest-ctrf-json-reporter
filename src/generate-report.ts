@@ -20,7 +20,6 @@ interface ReporterConfigOptions {
   outputFile?: string
   outputDir?: string
   minimal?: boolean
-  screenshot?: boolean
   testType?: string
   appName?: string | undefined
   appVersion?: string | undefined
@@ -48,6 +47,7 @@ class GenerateCtrfReport implements Reporter {
     this.reporterConfigOptions = {
       outputFile: reporterOptions?.outputFile ?? this.defaultOutputFile,
       outputDir: reporterOptions?.outputDir ?? this.defaultOutputDir,
+      minimal: reporterOptions?.minimal ?? false,
       appName: reporterOptions?.appName ?? undefined,
       appVersion: reporterOptions?.appVersion ?? undefined,
       osPlatform: reporterOptions?.osPlatform ?? undefined,
@@ -101,6 +101,8 @@ class GenerateCtrfReport implements Reporter {
     }
   }
 
+  onTestStart(): void {}
+
   onTestResult(_test: Test, testResult: TestResult): void {
     this.updateCtrfTestResultsFromTestResult(testResult)
     this.updateTotalsFromTestResult(testResult)
@@ -127,8 +129,18 @@ class GenerateCtrfReport implements Reporter {
         status: this.mapStatus(testCaseResult.status),
       }
 
-      test.message = this.extractFailureDetails(testCaseResult).message
-      test.trace = this.extractFailureDetails(testCaseResult).trace
+      if (this.reporterConfigOptions.minimal === false) {
+        test.message = this.extractFailureDetails(testCaseResult).message
+        test.trace = this.extractFailureDetails(testCaseResult).trace
+        test.rawStatus = testCaseResult.status
+        test.type = this.reporterConfigOptions.testType ?? 'unit'
+        test.filePath = testResult.testFilePath
+        test.retry = (testCaseResult.invocations ?? 1) - 1
+        test.flake =
+          testCaseResult.status === 'passed' &&
+          (testCaseResult.invocations ?? 1) - 1 > 0
+        test.suite = this.buildSuitePath(testResult, testCaseResult)
+      }
 
       this.ctrfReport.results.tests.push(test)
     })
@@ -203,6 +215,15 @@ class GenerateCtrfReport implements Reporter {
 
   hasEnvironmentDetails(environment: CtrfEnvironment): boolean {
     return Object.keys(environment).length > 0
+  }
+
+  buildSuitePath(
+    testResult: TestResult,
+    testCaseResult: AssertionResult
+  ): string {
+    const fileName = testResult.testFilePath.split('/').pop() ?? ''
+    const suiteParts = [fileName, ...testCaseResult.ancestorTitles]
+    return suiteParts.join(' > ')
   }
 
   private writeReportToFile(data: CtrfReport): void {
