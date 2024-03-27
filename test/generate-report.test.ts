@@ -11,8 +11,9 @@ describe('GenerateCtrfReport', () => {
   let reporter: GenerateCtrfReport
   beforeEach(() => {
     const mockGlobalConfig: Config.GlobalConfig = {} as Config.GlobalConfig
-    const mockreporterOptions: ReporterConfigOptions =
-      {} as ReporterConfigOptions
+    const mockreporterOptions: ReporterConfigOptions = {
+      minimal: true,
+    } as ReporterConfigOptions
     const mockreporterContext: ReporterContext = {} as ReporterContext
     reporter = new GenerateCtrfReport(
       mockGlobalConfig,
