@@ -12,7 +12,7 @@ describe('GenerateCtrfReport', () => {
   beforeEach(() => {
     const mockGlobalConfig: Config.GlobalConfig = {} as Config.GlobalConfig
     const mockreporterOptions: ReporterConfigOptions =
-      {} as ReporterConfigOptions
+      { minimal: true } as ReporterConfigOptions
     const mockreporterContext: ReporterContext = {} as ReporterContext
     reporter = new GenerateCtrfReport(
       mockGlobalConfig,
@@ -49,17 +49,17 @@ describe('GenerateCtrfReport', () => {
 
   describe('setFilename', () => {
     it('should add .json extension if none provided', () => {
-      ;(reporter as any).setFilename('myReport')
+      ; (reporter as any).setFilename('myReport')
       expect((reporter as any).filename).toBe('myReport.json')
     })
 
     it('should keep .json extension if already provided', () => {
-      ;(reporter as any).setFilename('myReport.json')
+      ; (reporter as any).setFilename('myReport.json')
       expect((reporter as any).filename).toBe('myReport.json')
     })
 
     it('should append .json to any other extensions', () => {
-      ;(reporter as any).setFilename('myReport.txt')
+      ; (reporter as any).setFilename('myReport.txt')
       expect((reporter as any).filename).toBe('myReport.txt.json')
     })
   })
@@ -75,7 +75,7 @@ describe('GenerateCtrfReport', () => {
         testResults: [mockTestCaseResult],
       } as TestResult
 
-      ;(reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
+        ; (reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
 
       const updatedTestResult = reporter['ctrfReport'].results.tests[0]
 
@@ -101,11 +101,11 @@ describe('GenerateCtrfReport', () => {
           testResults: [mockTestCaseResult],
         } as TestResult
 
-        ;(reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
+          ; (reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
 
         const updatedTestResult =
           reporter['ctrfReport'].results.tests[
-            reporter['ctrfReport'].results.tests.length - 1
+          reporter['ctrfReport'].results.tests.length - 1
           ]
 
         expect(updatedTestResult.name).toBe(testTitle)
@@ -126,11 +126,11 @@ describe('GenerateCtrfReport', () => {
           testResults: [mockTestCaseResult],
         } as TestResult
 
-        ;(reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
+          ; (reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
 
         const updatedTestResult =
           reporter['ctrfReport'].results.tests[
-            reporter['ctrfReport'].results.tests.length - 1
+          reporter['ctrfReport'].results.tests.length - 1
           ]
 
         expect(updatedTestResult.status).toBe('other')
@@ -149,7 +149,7 @@ describe('GenerateCtrfReport', () => {
         testResults: [mockTestCaseResult],
       } as TestResult
 
-      ;(reporter as any).updateTotalsFromTestResult(mockResult)
+        ; (reporter as any).updateTotalsFromTestResult(mockResult)
 
       expect(reporter['ctrfReport'].results.summary.tests).toBe(1)
     })
@@ -174,7 +174,7 @@ describe('GenerateCtrfReport', () => {
           testResults: [mockTestCaseResult],
         } as TestResult
 
-        ;(reporter as any).updateTotalsFromTestResult(mockResult)
+          ; (reporter as any).updateTotalsFromTestResult(mockResult)
 
         expect(reporter['ctrfReport'].results.summary.passed).toBe(passed)
         expect(reporter['ctrfReport'].results.summary.failed).toBe(failed)
