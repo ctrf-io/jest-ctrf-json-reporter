@@ -6,6 +6,10 @@ A Jest test reporter to create test reports that follow the CTRF standard.
 
 [Common Test Report Format](https://ctrf.io) ensures the generation of uniform JSON test reports, independent of programming languages or test framework in use.
 
+⭐ **If you find this project useful, consider giving it a GitHub star** ⭐
+
+It means a lot to us and helps us grow this open source library.
+
 ## Features
 
 - Generate JSON test reports that are [CTRF](https://ctrf.io) compliant
@@ -86,6 +90,7 @@ reporter: [
     outputFile: 'custom-name.json', // Optional: Output file name. Defaults to 'ctrf-report.json'.
     outputDir: 'custom-directory',  // Optional: Output directory path. Defaults to 'ctrf'.
     minimal: true,                  // Optional: Generate a minimal report. Defaults to 'false'. Overrides screenshot and testType when set to true
+    testType: 'unit',                // Optional: Specify the test type (e.g., 'unit', 'component'). Defaults to 'unit'.
     appName: 'MyApp',               // Optional: Specify the name of the application under test.
     appVersion: '1.0.0',            // Optional: Specify the version of the application under test.
     osPlatform: 'linux',            // Optional: Specify the OS platform.
@@ -112,7 +117,7 @@ The test object in the report includes the following [CTRF properties](https://c
 | `message`   | String  | Optional | The failure message if the test failed.                                             |
 | `trace`     | String  | Optional | The stack trace captured if the test failed.                                        |
 | `rawStatus` | String  | Optional | The original jest status of the test before mapping to CTRF status.                 |
-| `type`      | String  | Optional | The type of test (e.g., `api`, `e2e`).                                              |
+| `type`      | String  | Optional | The type of test (e.g., `unit`, `component`).                                       |
 | `filepath`  | String  | Optional | The file path where the test is located in the project.                             |
 | `retry`     | Number  | Optional | The number of retries attempted for the test.                                       |
 | `flake`     | Boolean | Optional | Indicates whether the test result is flaky.                                         |
