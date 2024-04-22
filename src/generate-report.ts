@@ -48,6 +48,7 @@ class GenerateCtrfReport implements Reporter {
       outputFile: reporterOptions?.outputFile ?? this.defaultOutputFile,
       outputDir: reporterOptions?.outputDir ?? this.defaultOutputDir,
       minimal: reporterOptions?.minimal ?? false,
+      testType: reporterOptions.testType ?? 'unit',
       appName: reporterOptions?.appName ?? undefined,
       appVersion: reporterOptions?.appVersion ?? undefined,
       osPlatform: reporterOptions?.osPlatform ?? undefined,
@@ -135,8 +136,8 @@ class GenerateCtrfReport implements Reporter {
         test.rawStatus = testCaseResult.status
         test.type = this.reporterConfigOptions.testType ?? 'unit'
         test.filePath = testResult.testFilePath
-        test.retry = (testCaseResult.invocations ?? 1) - 1
-        test.flake =
+        test.retries = (testCaseResult.invocations ?? 1) - 1
+        test.flaky =
           testCaseResult.status === 'passed' &&
           (testCaseResult.invocations ?? 1) - 1 > 0
         test.suite = this.buildSuitePath(testResult, testCaseResult)
