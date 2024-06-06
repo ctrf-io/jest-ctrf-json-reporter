@@ -37,6 +37,7 @@ class GenerateCtrfReport implements Reporter {
   readonly reporterName = 'jest-ctrf-json-reporter'
   readonly defaultOutputFile = 'ctrf-report.json'
   readonly defaultOutputDir = 'ctrf'
+
   filename = this.defaultOutputFile
 
   constructor(
@@ -148,24 +149,26 @@ class GenerateCtrfReport implements Reporter {
   }
 
   extractFailureDetails(testResult: AssertionResult): Partial<CtrfTest> {
+    const messageStackTracePattern = /^\s{4}at/mu
+    const colorCodesPattern = /\x1b\[\d+m/gmu
+  
     if (
       testResult.status === 'failed' &&
       testResult.failureMessages !== undefined
     ) {
       const failureDetails: Partial<CtrfTest> = {}
       if (testResult.failureMessages !== undefined) {
-        const regEx = /^\s+at (.*?):(\d+):(\d+)\)?$/mu
-        const colorCodes = /\x1b\[\d+m/gmu
-        const joined = testResult.failureMessages.join('\n')
-        const tested = joined.match(regEx)
-        if (tested !== null)
-          failureDetails.message = joined.slice(0, tested?.index)
-        else failureDetails.message = testResult.failureMessages.join('\r\n')
-        if (testResult.failureDetails !== undefined) {
-          if (tested !== null)
-            failureDetails.trace = joined.slice(tested.index, joined.length)
-          else failureDetails.trace = testResult.failureMessages.join('\r\n')
-        }
+        const joinedMessages = testResult.failureMessages.join('\n')
+        const match = joinedMessages.match(messageStackTracePattern)
+        // slice message until stack trace part is found and remove ansi color codes
+        failureDetails.message = joinedMessages.slice(0, match?.index).replace(colorCodesPattern, '')
+
+        // slice from begin of stack trace, remove indentation of each line and return the trace as string
+        failureDetails.trace = joinedMessages.slice(match?.index).split('\n').map((line) => {return line.trim() }).join("\n")
+      }
+      
+      if (testResult.failureDetails !== undefined) {
+          failureDetails.trace = testResult.failureMessages.join('\r\n')
       }
       return failureDetails
     }
