@@ -192,3 +192,41 @@ describe('GenerateCtrfReport', () => {
     )
   })
 })
+
+
+describe('GenerateDetailedCtrfReport', () => {
+  let reporter: GenerateCtrfReport
+  beforeEach(() => {
+    const mockGlobalConfig: Config.GlobalConfig = {} as Config.GlobalConfig
+    const mockreporterOptions: ReporterConfigOptions = {
+      minimal: false
+    } as ReporterConfigOptions
+    const mockreporterContext: ReporterContext = {} as ReporterContext
+    reporter = new GenerateCtrfReport(
+      mockGlobalConfig,
+      mockreporterOptions,
+      mockreporterContext
+    )
+  })
+
+  it('should update the ctrfReport message on failed builds', () => {
+    const mockTestCaseResult = {
+      status: 'failed' as Status,
+      fullName: 'Test Case Full Name',
+      ancestorTitles: ['parent'],
+      duration: 100,
+      
+      failureMessages: ["Error"]
+    }
+    const mockResult: TestResult = {
+      testFilePath: '/path/to/test.ts',
+      testResults: [mockTestCaseResult],
+    } as TestResult
+
+    ;(reporter as any).updateCtrfTestResultsFromTestResult(mockResult)
+
+    const updatedTestResult = reporter['ctrfReport'].results.tests[0]
+
+    expect(updatedTestResult.message).toBe('Error')
+  })
+})
