@@ -154,10 +154,18 @@ class GenerateCtrfReport implements Reporter {
     ) {
       const failureDetails: Partial<CtrfTest> = {}
       if (testResult.failureMessages !== undefined) {
-        failureDetails.message = testResult.failureMessages.join('\r\n')
-      }
-      if (testResult.failureDetails !== undefined) {
-        failureDetails.trace = testResult.failureMessages.join('\r\n')
+        const regEx = /^\s+at (.*?):(\d+):(\d+)\)?$/mu
+        const colorCodes = /\x1b\[\d+m/gmu
+        const joined = testResult.failureMessages.join('\n')
+        const tested = joined.match(regEx)
+        if (tested !== null)
+          failureDetails.message = joined.slice(0, tested?.index)
+        else failureDetails.message = testResult.failureMessages.join('\r\n')
+        if (testResult.failureDetails !== undefined) {
+          if (tested !== null)
+            failureDetails.trace = joined.slice(tested.index, joined.length)
+          else failureDetails.trace = testResult.failureMessages.join('\r\n')
+        }
       }
       return failureDetails
     }

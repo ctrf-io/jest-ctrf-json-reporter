@@ -54,6 +54,12 @@ describe('GenerateCtrfReport', () => {
       expect((reporter as any).filename).toBe('myReport.json')
     })
 
+    it('should fail', () => {
+      ;(reporter as any).setFilename('myReport')
+      const falseVar= false;
+      expect(falseVar).toBe(true)
+    })
+
     it('should keep .json extension if already provided', () => {
       ;(reporter as any).setFilename('myReport.json')
       expect((reporter as any).filename).toBe('myReport.json')
