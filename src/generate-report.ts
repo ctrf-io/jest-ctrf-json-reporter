@@ -160,10 +160,7 @@ class GenerateCtrfReport implements Reporter {
       if (testResult.failureMessages !== undefined) {
         const joinedMessages = testResult.failureMessages.join('\n')
         const match = joinedMessages.match(messageStackTracePattern)
-        // slice message until stack trace part is found and remove ansi color codes
         failureDetails.message = joinedMessages.slice(0, match?.index).replace(colorCodesPattern, '')
-
-        // slice from begin of stack trace, remove indentation of each line and return the trace as string
         failureDetails.trace = joinedMessages.slice(match?.index).split('\n').map((line) => {return line.trim() }).join("\n")
       }
       
