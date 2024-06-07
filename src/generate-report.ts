@@ -150,6 +150,7 @@ class GenerateCtrfReport implements Reporter {
 
   extractFailureDetails(testResult: AssertionResult): Partial<CtrfTest> {
     const messageStackTracePattern = /^\s{4}at/mu
+    // eslint-disable-next-line no-control-regex
     const colorCodesPattern = /\x1b\[\d+m/gmu
   
     if (
