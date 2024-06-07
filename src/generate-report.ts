@@ -152,7 +152,7 @@ class GenerateCtrfReport implements Reporter {
     const messageStackTracePattern = /^\s{4}at/mu
     // eslint-disable-next-line no-control-regex
     const colorCodesPattern = /\x1b\[\d+m/gmu
-  
+
     if (
       testResult.status === 'failed' &&
       testResult.failureMessages !== undefined
@@ -161,12 +161,20 @@ class GenerateCtrfReport implements Reporter {
       if (testResult.failureMessages !== undefined) {
         const joinedMessages = testResult.failureMessages.join('\n')
         const match = joinedMessages.match(messageStackTracePattern)
-        failureDetails.message = joinedMessages.slice(0, match?.index).replace(colorCodesPattern, '')
-        failureDetails.trace = joinedMessages.slice(match?.index).split('\n').map((line) => {return line.trim() }).join("\n")
+        failureDetails.message = joinedMessages
+          .slice(0, match?.index)
+          .replace(colorCodesPattern, '')
+        failureDetails.trace = joinedMessages
+          .slice(match?.index)
+          .split('\n')
+          .map((line) => {
+            return line.trim()
+          })
+          .join('\n')
       }
-      
+
       if (testResult.failureDetails !== undefined) {
-          failureDetails.trace = testResult.failureMessages.join('\r\n')
+        failureDetails.trace = testResult.failureMessages.join('\r\n')
       }
       return failureDetails
     }
