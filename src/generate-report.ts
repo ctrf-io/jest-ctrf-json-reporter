@@ -174,6 +174,7 @@ class GenerateCtrfReport implements Reporter {
         failureDetails.message = joinedMessages
           .slice(0, match?.index)
           .replace(colorCodesPattern, '')
+        
         failureDetails.trace = joinedMessages
           .slice(match?.index)
           .split('\n')
@@ -184,7 +185,7 @@ class GenerateCtrfReport implements Reporter {
       }
 
       if (testResult.failureDetails !== undefined) {
-        failureDetails.trace = testResult.failureMessages.join('\r\n')
+        failureDetails.trace = failureDetails.trace?.concat('\n\n', testResult.failureDetails.join('\n'))
       }
       return failureDetails
     }
