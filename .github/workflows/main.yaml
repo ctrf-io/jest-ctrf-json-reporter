@@ -35,14 +35,7 @@ jobs:
         with:
           report-path: ctrf/*.json
           summary-report: true
-          failed-report: false
-          fail-rate-report: false
-          flaky-report: false
-          flaky-rate-report: false
           previous-results-report: true
           insights-report: true
           slowest-report: true
           upload-artifact: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: always()
