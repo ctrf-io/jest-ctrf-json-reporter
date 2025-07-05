@@ -30,9 +30,16 @@ jobs:
       - run: npm run test
       - run: npm run lint-check
       - run: npm run format-check
-
-      - name: Upload report as artifact
-        uses: actions/upload-artifact@v2
+      - name: Publish Test Results
+        uses: ctrf-io/github-test-reporter@v1
         with:
-          name: ctrf-report
-          path: ctrf/ctrf-report.json
+          report-path: ctrf/*.json
+          summary-report: true
+          failed-report: false
+          fail-rate-report: false
+          flaky-report: false
+          flaky-rate-report: false
+          previous-results-report: true
+          insights-report: true
+          slowest-report: true
+          upload-artifact: true
