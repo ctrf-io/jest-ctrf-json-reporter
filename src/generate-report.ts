@@ -15,6 +15,7 @@ import {
 
 import * as fs from 'fs'
 import path = require('path')
+import * as crypto from 'crypto'
 
 interface ReporterConfigOptions {
   outputFile?: string
@@ -70,6 +71,11 @@ class GenerateCtrfReport implements Reporter {
     }
 
     this.ctrfReport = {
+      reportFormat: 'CTRF',
+      specVersion: '0.0.0',
+      reportId: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      generatedBy: 'jest-ctrf-json-reporter',
       results: {
         tool: {
           name: 'jest',
