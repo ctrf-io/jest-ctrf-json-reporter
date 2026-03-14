@@ -3,6 +3,12 @@
   "version": "0.0.10",
   "description": "A Jest test reporter to create test results reports",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./runtime": "./dist/runtime.js",
+    "./environment": "./dist/environment.js",
+    "./storage": "./dist/storage.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "npm run build && jest",
