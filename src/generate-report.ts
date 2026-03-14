@@ -16,6 +16,7 @@ import {
 import * as fs from 'fs'
 import path = require('path')
 import * as crypto from 'crypto'
+import { consumeTestMetadata } from './storage'
 
 interface ReporterConfigOptions {
   outputFile?: string
@@ -141,6 +142,9 @@ class GenerateCtrfReport implements Reporter {
 
   private updateCtrfTestResultsFromTestResult(testResult: TestResult): void {
     testResult.testResults.forEach((testCaseResult) => {
+      // Look up any runtime metadata stored by the environment
+      const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName)
+
       const test: CtrfTest = {
         name: testCaseResult.fullName,
         duration: testCaseResult.duration ?? 0,
@@ -158,6 +162,11 @@ class GenerateCtrfReport implements Reporter {
           testCaseResult.status === 'passed' &&
           (testCaseResult.invocations ?? 1) - 1 > 0
         test.suite = this.buildSuitePath(testResult, testCaseResult)
+      }
+
+      // Merge runtime metadata if present
+      if (runtimeMetadata && Object.keys(runtimeMetadata.extra).length > 0) {
+        test.extra = runtimeMetadata.extra
       }
 
       this.ctrfReport.results.tests.push(test)
