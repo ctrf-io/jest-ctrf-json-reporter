@@ -7,16 +7,30 @@ import {
 import { type Reporter, type ReporterContext } from '@jest/reporters'
 import { type Config } from '@jest/types'
 import {
-  type CtrfReport,
-  type CtrfTestState,
-  type CtrfEnvironment,
-  type CtrfTest,
-} from '../types/ctrf'
+  type CTRFReport,
+  type Test as CtrfTestBase,
+  type TestStatus,
+  type Environment,
+  type Results,
+} from 'ctrf'
 
 import * as fs from 'fs'
 import path = require('path')
 import * as crypto from 'crypto'
 import { consumeTestMetadata } from './storage'
+
+// Local overrides to keep backward-compatible string suite (canonical is string[])
+// TODO(v1): align suite to string[] and remove this override
+type JestTest = Omit<CtrfTestBase, 'suite'> & { suite?: string | string[] }
+// TODO(v1): align buildNumber to number and remove this override
+type JestEnvironment = Omit<Environment, 'buildNumber'> & {
+  buildNumber?: string | number
+}
+type JestResults = Omit<Results, 'tests' | 'environment'> & {
+  tests: JestTest[]
+  environment?: JestEnvironment
+}
+type JestCTRFReport = Omit<CTRFReport, 'results'> & { results: JestResults }
 
 interface ReporterConfigOptions {
   outputFile?: string
@@ -38,8 +52,8 @@ interface ReporterConfigOptions {
 }
 
 class GenerateCtrfReport implements Reporter {
-  readonly ctrfReport: CtrfReport
-  readonly ctrfEnvironment: CtrfEnvironment
+  readonly ctrfReport: JestCTRFReport
+  readonly ctrfEnvironment: JestEnvironment
   readonly reporterConfigOptions: ReporterConfigOptions
   readonly reporterName = 'jest-ctrf-json-reporter'
   readonly defaultOutputFile = 'ctrf-report.json'
@@ -145,7 +159,7 @@ class GenerateCtrfReport implements Reporter {
       // Look up any runtime metadata stored by the environment
       const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName)
 
-      const test: CtrfTest = {
+      const test: JestTest = {
         name: testCaseResult.fullName,
         duration: testCaseResult.duration ?? 0,
         status: this.mapStatus(testCaseResult.status),
@@ -173,7 +187,7 @@ class GenerateCtrfReport implements Reporter {
     })
   }
 
-  extractFailureDetails(testResult: AssertionResult): Partial<CtrfTest> {
+  extractFailureDetails(testResult: AssertionResult): Partial<JestTest> {
     const messageStackTracePattern = /^\s{4}at/mu
     // eslint-disable-next-line no-control-regex
     const colorCodesPattern = /\x1b\[\d+m/gmu
@@ -182,7 +196,7 @@ class GenerateCtrfReport implements Reporter {
       testResult.status === 'failed' &&
       testResult.failureMessages !== undefined
     ) {
-      const failureDetails: Partial<CtrfTest> = {}
+      const failureDetails: Partial<JestTest> = {}
       if (testResult.failureMessages !== undefined) {
         const joinedMessages = testResult.failureMessages.join('\n')
         const match = joinedMessages.match(messageStackTracePattern)
@@ -218,7 +232,7 @@ class GenerateCtrfReport implements Reporter {
     })
   }
 
-  private mapStatus(jestStatus: Status): CtrfTestState {
+  private mapStatus(jestStatus: Status): TestStatus {
     switch (jestStatus) {
       case 'passed':
         return 'passed'
@@ -276,7 +290,7 @@ class GenerateCtrfReport implements Reporter {
     }
   }
 
-  hasEnvironmentDetails(environment: CtrfEnvironment): boolean {
+  hasEnvironmentDetails(environment: JestEnvironment): boolean {
     return Object.keys(environment).length > 0
   }
 
@@ -289,7 +303,7 @@ class GenerateCtrfReport implements Reporter {
     return suiteParts.join(' > ')
   }
 
-  private writeReportToFile(data: CtrfReport): void {
+  private writeReportToFile(data: JestCTRFReport): void {
     const filePath = path.join(
       this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
       this.filename
