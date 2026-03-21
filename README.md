@@ -143,3 +143,61 @@ The test object in the report includes the following [CTRF properties](https://c
 | `filepath`  | String  | Optional | The file path where the test is located in the project.                             |
 | `retries`   | Number  | Optional | The number of retries attempted for the test.                                       |
 | `flaky`     | Boolean | Optional | Indicates whether the test result is flaky.                                         |
+
+## Extra
+
+The `extra` field lets you attach custom metadata to individual test results at runtime.
+
+See the [CTRF extra specification](https://www.ctrf.io/docs/specification/extra) for full details.
+
+### Usage
+
+Import `ctrf` from the reporter and call `ctrf.extra()` inside any test:
+
+```javascript
+const { ctrf } = require('jest-ctrf-json-reporter')
+
+test('checkout flow', () => {
+
+  ctrf.extra({ owner: 'checkout-team', priority: 'P1' })
+
+  // ... test logic ...
+})
+```
+
+You can call it multiple times in a single test:
+
+```javascript
+test('search results', () => {
+  ctrf.extra({ owner: 'search-team' })
+  ctrf.extra({ feature: 'search', environment: 'staging' })
+
+  // ... test logic ...
+
+  ctrf.extra({ customMetric: 'some-value' })
+})
+```
+
+The resulting `extra` field in the CTRF report:
+
+```json
+{
+  "name": "search results",
+  "status": "passed",
+  "duration": 300,
+  "extra": {
+    "owner": "search-team",
+    "feature": "search",
+    "environment": "staging",
+    "customMetric": "some-value"
+  }
+}
+```
+
+### Merge behaviour
+
+| Data type  | Behaviour                                      | Example |
+| ---------- | ---------------------------------------------- | ------- |
+| Primitives | Later call overwrites earlier                  | `extra({ owner: 'a' })` then `extra({ owner: 'b' })` → `{ owner: 'b' }` |
+| Objects    | Deep merged - nested keys preserved            | `extra({ build: { id: '1' } })` then `extra({ build: { url: '...' } })` → `{ build: { id: '1', url: '...' } }` |
+| Arrays     | Concatenated across calls                      | `extra({ tags: ['smoke'] })` then `extra({ tags: ['e2e'] })` → `{ tags: ['smoke', 'e2e'] }` |
