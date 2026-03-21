@@ -146,7 +146,7 @@ The test object in the report includes the following [CTRF properties](https://c
 
 ## Extra
 
-The `extra` field lets you attach custom metadata to individual test results at runtime. This data is merged into the `extra` field of each test in the CTRF report.
+The `extra` field lets you attach custom metadata to individual test results at runtime.
 
 See the [CTRF extra specification](https://www.ctrf.io/docs/specification/extra) for full details.
 
