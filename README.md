@@ -158,7 +158,6 @@ Import `ctrf` from the reporter and call `ctrf.extra()` inside any test:
 const { ctrf } = require('jest-ctrf-json-reporter')
 
 test('checkout flow', () => {
-
   ctrf.extra({ owner: 'checkout-team', priority: 'P1' })
 
   // ... test logic ...
@@ -196,8 +195,8 @@ The resulting `extra` field in the CTRF report:
 
 ### Merge behaviour
 
-| Data type  | Behaviour                                      | Example |
-| ---------- | ---------------------------------------------- | ------- |
-| Primitives | Later call overwrites earlier                  | `extra({ owner: 'a' })` then `extra({ owner: 'b' })` → `{ owner: 'b' }` |
-| Objects    | Deep merged - nested keys preserved            | `extra({ build: { id: '1' } })` then `extra({ build: { url: '...' } })` → `{ build: { id: '1', url: '...' } }` |
-| Arrays     | Concatenated across calls                      | `extra({ tags: ['smoke'] })` then `extra({ tags: ['e2e'] })` → `{ tags: ['smoke', 'e2e'] }` |
+| Data type  | Behaviour                           | Example                                                                                                        |
+| ---------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Primitives | Later call overwrites earlier       | `extra({ owner: 'a' })` then `extra({ owner: 'b' })` → `{ owner: 'b' }`                                        |
+| Objects    | Deep merged - nested keys preserved | `extra({ build: { id: '1' } })` then `extra({ build: { url: '...' } })` → `{ build: { id: '1', url: '...' } }` |
+| Arrays     | Concatenated across calls           | `extra({ tags: ['smoke'] })` then `extra({ tags: ['e2e'] })` → `{ tags: ['smoke', 'e2e'] }`                    |
