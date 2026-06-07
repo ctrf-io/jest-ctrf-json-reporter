@@ -16,7 +16,7 @@
 		"lint:check": "biome lint .",
 		"format": "biome format --write .",
 		"format:check": "biome format .",
-		"all": "npm run build && npm run test && npm run lint && npm run format && npm run check",
+		"all": "npm run build && npm run test && npm run lint:check && npm run format:check",
 		"check": "biome check ."
 	},
 	"repository": {
