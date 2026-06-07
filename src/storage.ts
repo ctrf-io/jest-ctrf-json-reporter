@@ -10,23 +10,23 @@
  * Runtime metadata collected for a single test
  */
 export interface TestMetadata {
-  extra: Record<string, unknown>
+	extra: Record<string, unknown>;
 }
 
 /**
  * Global key for runtime metadata storage
  */
-const CTRF_METADATA_STORE_KEY = '__ctrfMetadataStore'
+const CTRF_METADATA_STORE_KEY = "__ctrfMetadataStore";
 
 /**
  * Get or create the metadata store
  */
 function getStore(): Map<string, TestMetadata> {
-  const g = globalThis as any
-  if (!g[CTRF_METADATA_STORE_KEY]) {
-    g[CTRF_METADATA_STORE_KEY] = new Map<string, TestMetadata>()
-  }
-  return g[CTRF_METADATA_STORE_KEY]
+	const g = globalThis as any;
+	if (!g[CTRF_METADATA_STORE_KEY]) {
+		g[CTRF_METADATA_STORE_KEY] = new Map<string, TestMetadata>();
+	}
+	return g[CTRF_METADATA_STORE_KEY];
 }
 
 /**
@@ -35,10 +35,10 @@ function getStore(): Map<string, TestMetadata> {
  * @param metadata - The metadata to store
  */
 export function storeTestMetadata(
-  testId: string,
-  metadata: TestMetadata
+	testId: string,
+	metadata: TestMetadata,
 ): void {
-  getStore().set(testId, metadata)
+	getStore().set(testId, metadata);
 }
 
 /**
@@ -47,12 +47,12 @@ export function storeTestMetadata(
  * @returns The metadata if found, undefined otherwise
  */
 export function consumeTestMetadata(testId: string): TestMetadata | undefined {
-  const store = getStore()
-  const metadata = store.get(testId)
-  if (metadata) {
-    store.delete(testId)
-  }
-  return metadata
+	const store = getStore();
+	const metadata = store.get(testId);
+	if (metadata) {
+		store.delete(testId);
+	}
+	return metadata;
 }
 
 /**
@@ -60,19 +60,19 @@ export function consumeTestMetadata(testId: string): TestMetadata | undefined {
  * @param testId - Unique test identifier
  */
 export function peekTestMetadata(testId: string): TestMetadata | undefined {
-  return getStore().get(testId)
+	return getStore().get(testId);
 }
 
 /**
  * Clear all stored metadata
  */
 export function clearAllMetadata(): void {
-  getStore().clear()
+	getStore().clear();
 }
 
 /**
  * Get count of stored metadata entries (for debugging)
  */
 export function getMetadataCount(): number {
-  return getStore().size
+	return getStore().size;
 }

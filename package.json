@@ -1,69 +1,63 @@
 {
-  "name": "jest-ctrf-json-reporter",
-  "version": "0.0.11",
-  "description": "A Jest test reporter to create test results reports",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js",
-    "./runtime": "./dist/runtime.js",
-    "./environment": "./dist/environment.js",
-    "./storage": "./dist/storage.js"
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "npm run build && jest",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "all": "npm run build && npm run test && npm run lint && npm run format"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ctrf-io/jest-ctrf-json-reporter.git"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "homepage": "https://ctrf.io",
-  "files": [
-    "dist/",
-    "README.md"
-  ],
-  "author": "Matthew Poulton-White",
-  "license": "MIT",
-  "keywords": [
-    "ctrf",
-    "common-test-report-format",
-    "test-reporting",
-    "test-results",
-    "testing",
-    "json",
-    "ci",
-    "jest",
-    "jest-reporter"
-  ],
-  "security": {
-    "email": "security@ctrf.io",
-    "url": "https://github.com/ctrf-io/.github/blob/main/SECURITY.md"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^25.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.57.0",
-    "@typescript-eslint/parser": "^8.57.0",
-    "eslint": "^10.0.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "jest": "^30.2.0",
-    "prettier": "^3.8.1",
-    "ts-jest": "^29.4.6",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0"
-  },
-  "dependencies": {
-    "ctrf": "^0.2.0"
-  }
+	"name": "jest-ctrf-json-reporter",
+	"version": "0.0.11",
+	"description": "A Jest test reporter to create test results reports",
+	"main": "dist/index.js",
+	"exports": {
+		".": "./dist/index.js",
+		"./runtime": "./dist/runtime.js",
+		"./environment": "./dist/environment.js",
+		"./storage": "./dist/storage.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "npm run build && jest",
+		"lint": "biome lint --write . --unsafe",
+		"lint:check": "biome lint .",
+		"format": "biome format --write .",
+		"format:check": "biome format .",
+		"all": "npm run build && npm run test && npm run lint && npm run format && npm run check",
+		"check": "biome check ."
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ctrf-io/jest-ctrf-json-reporter.git"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"homepage": "https://ctrf.io",
+	"files": [
+		"dist/",
+		"README.md"
+	],
+	"author": "Matthew Poulton-White",
+	"license": "MIT",
+	"keywords": [
+		"ctrf",
+		"common-test-report-format",
+		"test-reporting",
+		"test-results",
+		"testing",
+		"json",
+		"ci",
+		"jest",
+		"jest-reporter"
+	],
+	"security": {
+		"email": "security@ctrf.io",
+		"url": "https://github.com/ctrf-io/.github/blob/main/SECURITY.md"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.16",
+		"@types/jest": "30.0.0",
+		"@types/node": "25.9.2",
+		"jest": "30.4.2",
+		"ts-jest": "29.4.11",
+		"typescript": "5.9.3"
+	},
+	"dependencies": {
+		"ctrf": "0.2.1"
+	}
 }
