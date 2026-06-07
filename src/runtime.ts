@@ -34,14 +34,14 @@
 /**
  * Runtime message types
  */
-export type CtrfRuntimeMessageType = 'extra'
+export type CtrfRuntimeMessageType = "extra";
 
 /**
  * A runtime message sent from test code to the environment
  */
 export interface CtrfRuntimeMessage {
-  type: CtrfRuntimeMessageType
-  data: unknown
+	type: CtrfRuntimeMessageType;
+	data: unknown;
 }
 
 /**
@@ -49,14 +49,14 @@ export interface CtrfRuntimeMessage {
  * The Jest Environment sets this so runtime calls can find the handler.
  * @internal - exported for consistency between environment and runtime
  */
-export const CTRF_RUNTIME_KEY = '__ctrfTestRuntime'
+export const CTRF_RUNTIME_KEY = "__ctrfTestRuntime";
 
 /**
  * Get the runtime handler from global context.
  * Returns undefined if not in a test context.
  */
 function getRuntime(): ((message: CtrfRuntimeMessage) => void) | undefined {
-  return (globalThis as any)[CTRF_RUNTIME_KEY]
+	return (globalThis as any)[CTRF_RUNTIME_KEY];
 }
 
 /**
@@ -64,10 +64,10 @@ function getRuntime(): ((message: CtrfRuntimeMessage) => void) | undefined {
  * Silently no-ops if outside test context.
  */
 function sendMessage(message: CtrfRuntimeMessage): void {
-  const runtime = getRuntime()
-  if (runtime) {
-    runtime(message)
-  }
+	const runtime = getRuntime();
+	if (runtime) {
+		runtime(message);
+	}
 }
 
 /**
@@ -77,7 +77,7 @@ function sendMessage(message: CtrfRuntimeMessage): void {
  * @param data - An object containing metadata to attach
  */
 export function extra(data: Record<string, unknown>): void {
-  sendMessage({ type: 'extra', data })
+	sendMessage({ type: "extra", data });
 }
 
 /**
@@ -85,8 +85,8 @@ export function extra(data: Record<string, unknown>): void {
  * Provides the same API as the direct exports for users who prefer `ctrf.extra()` syntax.
  */
 export const ctrf = {
-  extra,
-} as const
+	extra,
+} as const;
 
 // --------------------
 // Internal exports for the environment
@@ -97,9 +97,9 @@ export const ctrf = {
  * @internal
  */
 export function __setRuntime(
-  handler: (message: CtrfRuntimeMessage) => void
+	handler: (message: CtrfRuntimeMessage) => void,
 ): void {
-  ;(globalThis as any)[CTRF_RUNTIME_KEY] = handler
+	(globalThis as any)[CTRF_RUNTIME_KEY] = handler;
 }
 
 /**
@@ -107,11 +107,11 @@ export function __setRuntime(
  * @internal
  */
 export function __clearRuntime(): void {
-  delete (globalThis as any)[CTRF_RUNTIME_KEY]
+	delete (globalThis as any)[CTRF_RUNTIME_KEY];
 }
 
 /**
  * Export the runtime key for testing/debugging.
  * @internal
  */
-export const __RUNTIME_KEY = CTRF_RUNTIME_KEY
+export const __RUNTIME_KEY = CTRF_RUNTIME_KEY;

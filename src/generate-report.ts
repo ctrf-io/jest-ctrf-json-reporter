@@ -1,325 +1,323 @@
-import {
-  type TestResult,
-  type Test,
-  type Status,
-  type AssertionResult,
-} from '@jest/test-result'
-import { type Reporter, type ReporterContext } from '@jest/reporters'
-import { type Config } from '@jest/types'
-import {
-  type CTRFReport,
-  type Test as CtrfTestBase,
-  type TestStatus,
-  type Environment,
-  type Results,
-} from 'ctrf'
+import type {
+	TestResult,
+	Test,
+	Status,
+	AssertionResult,
+} from "@jest/test-result";
+import type { Reporter, ReporterContext } from "@jest/reporters";
+import type { Config } from "@jest/types";
+import type {
+	CTRFReport,
+	Test as CtrfTestBase,
+	TestStatus,
+	Environment,
+	Results,
+} from "ctrf";
 
-import * as fs from 'fs'
-import path = require('path')
-import * as crypto from 'crypto'
-import { consumeTestMetadata } from './storage'
+import * as fs from "node:fs";
+import path = require("node:path");
+import * as crypto from "node:crypto";
+import { consumeTestMetadata } from "./storage";
 
 // Local overrides to keep backward-compatible string suite (canonical is string[])
 // TODO(v1): align suite to string[] and remove this override
-type JestTest = Omit<CtrfTestBase, 'suite'> & { suite?: string | string[] }
+type JestTest = Omit<CtrfTestBase, "suite"> & { suite?: string | string[] };
 // TODO(v1): align buildNumber to number and remove this override
-type JestEnvironment = Omit<Environment, 'buildNumber'> & {
-  buildNumber?: string | number
-}
-type JestResults = Omit<Results, 'tests' | 'environment'> & {
-  tests: JestTest[]
-  environment?: JestEnvironment
-}
-type JestCTRFReport = Omit<CTRFReport, 'results'> & { results: JestResults }
+type JestEnvironment = Omit<Environment, "buildNumber"> & {
+	buildNumber?: string | number;
+};
+type JestResults = Omit<Results, "tests" | "environment"> & {
+	tests: JestTest[];
+	environment?: JestEnvironment;
+};
+type JestCTRFReport = Omit<CTRFReport, "results"> & { results: JestResults };
 
 interface ReporterConfigOptions {
-  outputFile?: string
-  outputDir?: string
-  minimal?: boolean
-  testType?: string
-  appName?: string | undefined
-  appVersion?: string | undefined
-  osPlatform?: string | undefined
-  osRelease?: string | undefined
-  osVersion?: string | undefined
-  buildName?: string | undefined
-  buildNumber?: string | undefined
-  buildUrl?: string | undefined
-  repositoryName?: string | undefined
-  repositoryUrl?: string | undefined
-  branchName?: string | undefined
-  testEnvironment?: string | undefined
+	outputFile?: string;
+	outputDir?: string;
+	minimal?: boolean;
+	testType?: string;
+	appName?: string | undefined;
+	appVersion?: string | undefined;
+	osPlatform?: string | undefined;
+	osRelease?: string | undefined;
+	osVersion?: string | undefined;
+	buildName?: string | undefined;
+	buildNumber?: string | undefined;
+	buildUrl?: string | undefined;
+	repositoryName?: string | undefined;
+	repositoryUrl?: string | undefined;
+	branchName?: string | undefined;
+	testEnvironment?: string | undefined;
 }
 
 class GenerateCtrfReport implements Reporter {
-  readonly ctrfReport: JestCTRFReport
-  readonly ctrfEnvironment: JestEnvironment
-  readonly reporterConfigOptions: ReporterConfigOptions
-  readonly reporterName = 'jest-ctrf-json-reporter'
-  readonly defaultOutputFile = 'ctrf-report.json'
-  readonly defaultOutputDir = 'ctrf'
+	readonly ctrfReport: JestCTRFReport;
+	readonly ctrfEnvironment: JestEnvironment;
+	readonly reporterConfigOptions: ReporterConfigOptions;
+	readonly reporterName = "jest-ctrf-json-reporter";
+	readonly defaultOutputFile = "ctrf-report.json";
+	readonly defaultOutputDir = "ctrf";
 
-  filename = this.defaultOutputFile
+	filename = this.defaultOutputFile;
 
-  constructor(
-    _globalConfig: Config.GlobalConfig,
-    reporterOptions: ReporterConfigOptions,
-    _reporterContext: ReporterContext
-  ) {
-    this.reporterConfigOptions = {
-      outputFile: reporterOptions?.outputFile ?? this.defaultOutputFile,
-      outputDir: reporterOptions?.outputDir ?? this.defaultOutputDir,
-      minimal: reporterOptions?.minimal ?? false,
-      testType: reporterOptions.testType ?? 'unit',
-      appName: reporterOptions?.appName ?? undefined,
-      appVersion: reporterOptions?.appVersion ?? undefined,
-      osPlatform: reporterOptions?.osPlatform ?? undefined,
-      osRelease: reporterOptions?.osRelease ?? undefined,
-      osVersion: reporterOptions?.osVersion ?? undefined,
-      buildName: reporterOptions?.buildName ?? undefined,
-      buildNumber: reporterOptions?.buildNumber ?? undefined,
-      buildUrl: reporterOptions?.buildUrl ?? undefined,
-      repositoryName: reporterOptions?.repositoryName ?? undefined,
-      repositoryUrl: reporterOptions?.repositoryUrl ?? undefined,
-      branchName: reporterOptions?.branchName ?? undefined,
-      testEnvironment: reporterOptions?.testEnvironment ?? undefined,
-    }
+	constructor(
+		_globalConfig: Config.GlobalConfig,
+		reporterOptions: ReporterConfigOptions,
+		_reporterContext: ReporterContext,
+	) {
+		this.reporterConfigOptions = {
+			outputFile: reporterOptions?.outputFile ?? this.defaultOutputFile,
+			outputDir: reporterOptions?.outputDir ?? this.defaultOutputDir,
+			minimal: reporterOptions?.minimal ?? false,
+			testType: reporterOptions.testType ?? "unit",
+			appName: reporterOptions?.appName ?? undefined,
+			appVersion: reporterOptions?.appVersion ?? undefined,
+			osPlatform: reporterOptions?.osPlatform ?? undefined,
+			osRelease: reporterOptions?.osRelease ?? undefined,
+			osVersion: reporterOptions?.osVersion ?? undefined,
+			buildName: reporterOptions?.buildName ?? undefined,
+			buildNumber: reporterOptions?.buildNumber ?? undefined,
+			buildUrl: reporterOptions?.buildUrl ?? undefined,
+			repositoryName: reporterOptions?.repositoryName ?? undefined,
+			repositoryUrl: reporterOptions?.repositoryUrl ?? undefined,
+			branchName: reporterOptions?.branchName ?? undefined,
+			testEnvironment: reporterOptions?.testEnvironment ?? undefined,
+		};
 
-    this.ctrfReport = {
-      reportFormat: 'CTRF',
-      specVersion: '0.0.0',
-      reportId: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      generatedBy: 'jest-ctrf-json-reporter',
-      results: {
-        tool: {
-          name: 'jest',
-        },
-        summary: {
-          tests: 0,
-          passed: 0,
-          failed: 0,
-          pending: 0,
-          skipped: 0,
-          other: 0,
-          start: 0,
-          stop: 0,
-        },
-        tests: [],
-      },
-    }
+		this.ctrfReport = {
+			reportFormat: "CTRF",
+			specVersion: "0.0.0",
+			reportId: crypto.randomUUID(),
+			timestamp: new Date().toISOString(),
+			generatedBy: "jest-ctrf-json-reporter",
+			results: {
+				tool: {
+					name: "jest",
+				},
+				summary: {
+					tests: 0,
+					passed: 0,
+					failed: 0,
+					pending: 0,
+					skipped: 0,
+					other: 0,
+					start: 0,
+					stop: 0,
+				},
+				tests: [],
+			},
+		};
 
-    this.ctrfEnvironment = {}
+		this.ctrfEnvironment = {};
 
-    if (this.reporterConfigOptions?.outputFile !== undefined)
-      this.setFilename(this.reporterConfigOptions.outputFile)
+		if (this.reporterConfigOptions?.outputFile !== undefined)
+			this.setFilename(this.reporterConfigOptions.outputFile);
 
-    if (
-      !fs.existsSync(
-        this.reporterConfigOptions.outputDir ?? this.defaultOutputDir
-      )
-    ) {
-      fs.mkdirSync(
-        this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
-        { recursive: true }
-      )
-    }
-  }
+		if (
+			!fs.existsSync(
+				this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
+			)
+		) {
+			fs.mkdirSync(
+				this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
+				{ recursive: true },
+			);
+		}
+	}
 
-  onRunStart(): void {
-    this.ctrfReport.results.summary.start = Date.now()
-    this.setEnvironmentDetails(this.reporterConfigOptions ?? {})
-    if (this.hasEnvironmentDetails(this.ctrfEnvironment)) {
-      this.ctrfReport.results.environment = this.ctrfEnvironment
-    }
-  }
+	onRunStart(): void {
+		this.ctrfReport.results.summary.start = Date.now();
+		this.setEnvironmentDetails(this.reporterConfigOptions ?? {});
+		if (this.hasEnvironmentDetails(this.ctrfEnvironment)) {
+			this.ctrfReport.results.environment = this.ctrfEnvironment;
+		}
+	}
 
-  onTestStart(): void {}
+	onTestStart(): void {}
 
-  onTestResult(_test: Test, testResult: TestResult): void {
-    this.updateCtrfTestResultsFromTestResult(testResult)
-    this.updateTotalsFromTestResult(testResult)
-  }
+	onTestResult(_test: Test, testResult: TestResult): void {
+		this.updateCtrfTestResultsFromTestResult(testResult);
+		this.updateTotalsFromTestResult(testResult);
+	}
 
-  onRunComplete(): void {
-    this.ctrfReport.results.summary.stop = Date.now()
-    this.writeReportToFile(this.ctrfReport)
-  }
+	onRunComplete(): void {
+		this.ctrfReport.results.summary.stop = Date.now();
+		this.writeReportToFile(this.ctrfReport);
+	}
 
-  private setFilename(filename: string): void {
-    if (filename.endsWith('.json')) {
-      this.filename = filename
-    } else {
-      this.filename = `${filename}.json`
-    }
-  }
+	private setFilename(filename: string): void {
+		if (filename.endsWith(".json")) {
+			this.filename = filename;
+		} else {
+			this.filename = `${filename}.json`;
+		}
+	}
 
-  private updateCtrfTestResultsFromTestResult(testResult: TestResult): void {
-    testResult.testResults.forEach((testCaseResult) => {
-      // Look up any runtime metadata stored by the environment
-      const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName)
+	private updateCtrfTestResultsFromTestResult(testResult: TestResult): void {
+		testResult.testResults.forEach((testCaseResult) => {
+			// Look up any runtime metadata stored by the environment
+			const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName);
 
-      const test: JestTest = {
-        name: testCaseResult.fullName,
-        duration: testCaseResult.duration ?? 0,
-        status: this.mapStatus(testCaseResult.status),
-      }
+			const test: JestTest = {
+				name: testCaseResult.fullName,
+				duration: testCaseResult.duration ?? 0,
+				status: this.mapStatus(testCaseResult.status),
+			};
 
-      if (this.reporterConfigOptions.minimal === false) {
-        test.message = this.extractFailureDetails(testCaseResult).message
-        test.trace = this.extractFailureDetails(testCaseResult).trace
-        test.rawStatus = testCaseResult.status
-        test.type = this.reporterConfigOptions.testType ?? 'unit'
-        test.filePath = testResult.testFilePath
-        test.retries = (testCaseResult.invocations ?? 1) - 1
-        test.flaky =
-          testCaseResult.status === 'passed' &&
-          (testCaseResult.invocations ?? 1) - 1 > 0
-        test.suite = this.buildSuitePath(testResult, testCaseResult)
-      }
+			if (this.reporterConfigOptions.minimal === false) {
+				test.message = this.extractFailureDetails(testCaseResult).message;
+				test.trace = this.extractFailureDetails(testCaseResult).trace;
+				test.rawStatus = testCaseResult.status;
+				test.type = this.reporterConfigOptions.testType ?? "unit";
+				test.filePath = testResult.testFilePath;
+				test.retries = (testCaseResult.invocations ?? 1) - 1;
+				test.flaky =
+					testCaseResult.status === "passed" &&
+					(testCaseResult.invocations ?? 1) - 1 > 0;
+				test.suite = this.buildSuitePath(testResult, testCaseResult);
+			}
 
-      // Merge runtime metadata if present
-      if (runtimeMetadata && Object.keys(runtimeMetadata.extra).length > 0) {
-        test.extra = runtimeMetadata.extra
-      }
+			// Merge runtime metadata if present
+			if (runtimeMetadata && Object.keys(runtimeMetadata.extra).length > 0) {
+				test.extra = runtimeMetadata.extra;
+			}
 
-      this.ctrfReport.results.tests.push(test)
-    })
-  }
+			this.ctrfReport.results.tests.push(test);
+		});
+	}
 
-  extractFailureDetails(testResult: AssertionResult): Partial<JestTest> {
-    const messageStackTracePattern = /^\s{4}at/mu
-    // eslint-disable-next-line no-control-regex
-    const colorCodesPattern = /\x1b\[\d+m/gmu
+	extractFailureDetails(testResult: AssertionResult): Partial<JestTest> {
+		const messageStackTracePattern = /^\s{4}at/mu;
+		// eslint-disable-next-line no-control-regex
+		const colorCodesPattern = /\x1b\[\d+m/gmu;
 
-    if (
-      testResult.status === 'failed' &&
-      testResult.failureMessages !== undefined
-    ) {
-      const failureDetails: Partial<JestTest> = {}
-      if (testResult.failureMessages !== undefined) {
-        const joinedMessages = testResult.failureMessages.join('\n')
-        const match = joinedMessages.match(messageStackTracePattern)
-        failureDetails.message = joinedMessages
-          .slice(0, match?.index)
-          .replace(colorCodesPattern, '')
+		if (
+			testResult.status === "failed" &&
+			testResult.failureMessages !== undefined
+		) {
+			const failureDetails: Partial<JestTest> = {};
+			if (testResult.failureMessages !== undefined) {
+				const joinedMessages = testResult.failureMessages.join("\n");
+				const match = joinedMessages.match(messageStackTracePattern);
+				failureDetails.message = joinedMessages
+					.slice(0, match?.index)
+					.replace(colorCodesPattern, "");
 
-        failureDetails.trace = joinedMessages
-          .slice(match?.index)
-          .split('\n')
-          .map((line) => {
-            return line.trim()
-          })
-          .join('\n')
-      }
+				failureDetails.trace = joinedMessages
+					.slice(match?.index)
+					.split("\n")
+					.map((line) => {
+						return line.trim();
+					})
+					.join("\n");
+			}
 
-      if (testResult.failureDetails !== undefined) {
-        failureDetails.trace = failureDetails.trace?.concat(
-          '\n\n',
-          testResult.failureDetails.join('\n')
-        )
-      }
-      return failureDetails
-    }
-    return {}
-  }
+			if (testResult.failureDetails !== undefined) {
+				failureDetails.trace = failureDetails.trace?.concat(
+					"\n\n",
+					testResult.failureDetails.join("\n"),
+				);
+			}
+			return failureDetails;
+		}
+		return {};
+	}
 
-  private updateTotalsFromTestResult(testResult: TestResult): void {
-    testResult.testResults.forEach((testCaseResult) => {
-      const ctrfStatus = this.mapStatus(testCaseResult.status)
-      this.ctrfReport.results.summary[ctrfStatus]++
-      this.ctrfReport.results.summary.tests++
-    })
-  }
+	private updateTotalsFromTestResult(testResult: TestResult): void {
+		testResult.testResults.forEach((testCaseResult) => {
+			const ctrfStatus = this.mapStatus(testCaseResult.status);
+			this.ctrfReport.results.summary[ctrfStatus]++;
+			this.ctrfReport.results.summary.tests++;
+		});
+	}
 
-  private mapStatus(jestStatus: Status): TestStatus {
-    switch (jestStatus) {
-      case 'passed':
-        return 'passed'
-      case 'failed':
-        return 'failed'
-      case 'skipped':
-        return 'skipped'
-      case 'pending':
-        return 'pending'
-      case 'todo':
-      case 'disabled':
-      case 'focused':
-      default:
-        return 'other'
-    }
-  }
+	private mapStatus(jestStatus: Status): TestStatus {
+		switch (jestStatus) {
+			case "passed":
+				return "passed";
+			case "failed":
+				return "failed";
+			case "skipped":
+				return "skipped";
+			case "pending":
+				return "pending";
+			default:
+				return "other";
+		}
+	}
 
-  setEnvironmentDetails(reporterConfigOptions: ReporterConfigOptions): void {
-    if (reporterConfigOptions.appName !== undefined) {
-      this.ctrfEnvironment.appName = reporterConfigOptions.appName
-    }
-    if (reporterConfigOptions.appVersion !== undefined) {
-      this.ctrfEnvironment.appVersion = reporterConfigOptions.appVersion
-    }
-    if (reporterConfigOptions.osPlatform !== undefined) {
-      this.ctrfEnvironment.osPlatform = reporterConfigOptions.osPlatform
-    }
-    if (reporterConfigOptions.osRelease !== undefined) {
-      this.ctrfEnvironment.osRelease = reporterConfigOptions.osRelease
-    }
-    if (reporterConfigOptions.osVersion !== undefined) {
-      this.ctrfEnvironment.osVersion = reporterConfigOptions.osVersion
-    }
-    if (reporterConfigOptions.buildName !== undefined) {
-      this.ctrfEnvironment.buildName = reporterConfigOptions.buildName
-    }
-    if (reporterConfigOptions.buildNumber !== undefined) {
-      this.ctrfEnvironment.buildNumber = reporterConfigOptions.buildNumber
-    }
-    if (reporterConfigOptions.buildUrl !== undefined) {
-      this.ctrfEnvironment.buildUrl = reporterConfigOptions.buildUrl
-    }
-    if (reporterConfigOptions.repositoryName !== undefined) {
-      this.ctrfEnvironment.repositoryName = reporterConfigOptions.repositoryName
-    }
-    if (reporterConfigOptions.repositoryUrl !== undefined) {
-      this.ctrfEnvironment.repositoryUrl = reporterConfigOptions.repositoryUrl
-    }
-    if (reporterConfigOptions.branchName !== undefined) {
-      this.ctrfEnvironment.branchName = reporterConfigOptions.branchName
-    }
-    if (reporterConfigOptions.testEnvironment !== undefined) {
-      this.ctrfEnvironment.testEnvironment =
-        reporterConfigOptions.testEnvironment
-    }
-  }
+	setEnvironmentDetails(reporterConfigOptions: ReporterConfigOptions): void {
+		if (reporterConfigOptions.appName !== undefined) {
+			this.ctrfEnvironment.appName = reporterConfigOptions.appName;
+		}
+		if (reporterConfigOptions.appVersion !== undefined) {
+			this.ctrfEnvironment.appVersion = reporterConfigOptions.appVersion;
+		}
+		if (reporterConfigOptions.osPlatform !== undefined) {
+			this.ctrfEnvironment.osPlatform = reporterConfigOptions.osPlatform;
+		}
+		if (reporterConfigOptions.osRelease !== undefined) {
+			this.ctrfEnvironment.osRelease = reporterConfigOptions.osRelease;
+		}
+		if (reporterConfigOptions.osVersion !== undefined) {
+			this.ctrfEnvironment.osVersion = reporterConfigOptions.osVersion;
+		}
+		if (reporterConfigOptions.buildName !== undefined) {
+			this.ctrfEnvironment.buildName = reporterConfigOptions.buildName;
+		}
+		if (reporterConfigOptions.buildNumber !== undefined) {
+			this.ctrfEnvironment.buildNumber = reporterConfigOptions.buildNumber;
+		}
+		if (reporterConfigOptions.buildUrl !== undefined) {
+			this.ctrfEnvironment.buildUrl = reporterConfigOptions.buildUrl;
+		}
+		if (reporterConfigOptions.repositoryName !== undefined) {
+			this.ctrfEnvironment.repositoryName =
+				reporterConfigOptions.repositoryName;
+		}
+		if (reporterConfigOptions.repositoryUrl !== undefined) {
+			this.ctrfEnvironment.repositoryUrl = reporterConfigOptions.repositoryUrl;
+		}
+		if (reporterConfigOptions.branchName !== undefined) {
+			this.ctrfEnvironment.branchName = reporterConfigOptions.branchName;
+		}
+		if (reporterConfigOptions.testEnvironment !== undefined) {
+			this.ctrfEnvironment.testEnvironment =
+				reporterConfigOptions.testEnvironment;
+		}
+	}
 
-  hasEnvironmentDetails(environment: JestEnvironment): boolean {
-    return Object.keys(environment).length > 0
-  }
+	hasEnvironmentDetails(environment: JestEnvironment): boolean {
+		return Object.keys(environment).length > 0;
+	}
 
-  buildSuitePath(
-    testResult: TestResult,
-    testCaseResult: AssertionResult
-  ): string {
-    const fileName = testResult.testFilePath.split('/').pop() ?? ''
-    const suiteParts = [fileName, ...testCaseResult.ancestorTitles]
-    return suiteParts.join(' > ')
-  }
+	buildSuitePath(
+		testResult: TestResult,
+		testCaseResult: AssertionResult,
+	): string {
+		const fileName = testResult.testFilePath.split("/").pop() ?? "";
+		const suiteParts = [fileName, ...testCaseResult.ancestorTitles];
+		return suiteParts.join(" > ");
+	}
 
-  private writeReportToFile(data: JestCTRFReport): void {
-    const filePath = path.join(
-      this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
-      this.filename
-    )
-    const str = JSON.stringify(data, null, 2)
-    try {
-      fs.writeFileSync(filePath, str + '\n')
-      console.log(
-        `${this.reporterName}: successfully written ctrf json to %s/%s`,
-        this.reporterConfigOptions.outputDir,
-        this.filename
-      )
-    } catch (error) {
-      console.error(`Error writing ctrf json report:, ${String(error)}`)
-    }
-  }
+	private writeReportToFile(data: JestCTRFReport): void {
+		const filePath = path.join(
+			this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
+			this.filename,
+		);
+		const str = JSON.stringify(data, null, 2);
+		try {
+			fs.writeFileSync(filePath, `${str}\n`);
+			console.log(
+				`${this.reporterName}: successfully written ctrf json to %s/%s`,
+				this.reporterConfigOptions.outputDir,
+				this.filename,
+			);
+		} catch (error) {
+			console.error(`Error writing ctrf json report:, ${String(error)}`);
+		}
+	}
 }
 
-export default GenerateCtrfReport
+export default GenerateCtrfReport;
