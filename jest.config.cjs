@@ -13,7 +13,7 @@ module.exports = {
 	reporters: [
 		"default",
 		[
-			"./dist/generate-report.js",
+			"jest-ctrf-json-reporter",
 			{
 				appName,
 				appVersion,

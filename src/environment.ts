@@ -23,9 +23,13 @@ import type {
 	JestEnvironmentConfig,
 } from "@jest/environment";
 import type { Circus, Config as JestConfig } from "@jest/types";
+import type NodeEnvironmentType from "jest-environment-node";
+import { createRequire } from "node:module";
 import * as path from "node:path";
 import { CTRF_RUNTIME_KEY, type CtrfRuntimeMessage } from "./runtime";
 import { storeTestMetadata, type TestMetadata } from "./storage";
+
+const require = createRequire(import.meta.url);
 
 /**
  * Configuration options for the CTRF Jest Environment
@@ -390,7 +394,9 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 }
 
 // Default export: load NodeEnvironment
-import NodeEnvironment from "jest-environment-node";
+const NodeEnvironment = (
+	require("jest-environment-node") as typeof import("jest-environment-node")
+).default as typeof NodeEnvironmentType;
 
 // Create and export the default environment
 export default createCtrfJestEnvironment(NodeEnvironment);
