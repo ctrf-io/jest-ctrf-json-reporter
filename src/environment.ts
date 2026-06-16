@@ -240,13 +240,22 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 		/**
 		 * Handle Jest Circus test events
 		 */
-		handleTestEvent = (event: Circus.Event, _state: Circus.State): void => {
+		handleTestEvent = (event: Circus.Event, state: Circus.State): void => {
 			switch (event.name) {
 				case "run_describe_start":
 					this.handleSuiteStart();
 					break;
 				case "run_describe_finish":
 					this.handleSuiteEnd();
+					break;
+				case "hook_start":
+					this.handleHookStart(event.hook, state);
+					break;
+				case "hook_success":
+					this.handleHookEnd(event.hook);
+					break;
+				case "hook_failure":
+					this.handleHookEnd(event.hook);
 					break;
 				case "test_fn_start":
 					this.handleTestStart(event.test);
@@ -269,6 +278,36 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 			}
 		};
 
+		private handleHookStart(hook: Circus.Hook, state: Circus.State): void {
+			if (hook.type !== "beforeEach" && hook.type !== "afterEach") return;
+
+			const currentTest = state.currentlyRunningTest;
+			if (!currentTest) return;
+
+			const testPath = getTestPath(currentTest);
+			const testId = getTestId(testPath);
+
+			if (!this.runContext.tests.has(testId)) {
+				const fullName = `${this.testPath} > ${testId}`;
+				this.runContext.tests.set(testId, {
+					name: currentTest.name,
+					fullName,
+					filePath: this.testPath,
+					startedAt: Date.now(),
+					duration: 0,
+					status: "other",
+					metadata: { extra: {} },
+				});
+			}
+
+			this.runContext.executables.push(testId);
+		}
+
+		private handleHookEnd(hook: Circus.Hook): void {
+			if (hook.type !== "beforeEach" && hook.type !== "afterEach") return;
+			this.runContext.executables.pop();
+		}
+
 		private handleSuiteStart(): void {
 			const scopeId = Math.random().toString(36).substring(2, 15);
 			this.runContext.scopes.push(scopeId);
@@ -283,6 +322,9 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 			const testId = getTestId(testPath);
 			const fullName = `${this.testPath} > ${testId}`;
 
+			// Preserve metadata collected by beforeEach hooks before test_fn_start
+			const existingMetadata = this.runContext.tests.get(testId)?.metadata;
+
 			this.runContext.tests.set(testId, {
 				name: test.name,
 				fullName,
@@ -290,9 +332,7 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 				startedAt: test.startedAt ?? Date.now(),
 				duration: 0,
 				status: "other", // Will be updated
-				metadata: {
-					extra: {},
-				},
+				metadata: existingMetadata ?? { extra: {} },
 			});
 
 			this.runContext.executables.push(testId);
