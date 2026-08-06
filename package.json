@@ -77,7 +77,7 @@
 		"@types/node": "26.1.0",
 		"jest": "30.4.2",
 		"tsup": "8.5.1",
-		"ts-jest": "29.4.11",
+		"ts-jest": "29.4.12",
 		"typescript": "6.0.3"
 	},
 	"dependencies": {
