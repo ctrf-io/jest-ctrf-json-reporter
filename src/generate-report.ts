@@ -11,26 +11,14 @@ import type {
 	Test as CtrfTestBase,
 	TestStatus,
 	Environment,
-	Results,
+	RetryAttempt,
 } from "ctrf";
+import { CURRENT_SPEC_VERSION } from "ctrf";
 
 import * as fs from "node:fs";
 import path from "node:path";
 import * as crypto from "node:crypto";
 import { consumeTestMetadata } from "./storage";
-
-// Local overrides to keep backward-compatible string suite (canonical is string[])
-// TODO(v1): align suite to string[] and remove this override
-type JestTest = Omit<CtrfTestBase, "suite"> & { suite?: string | string[] };
-// TODO(v1): align buildNumber to number and remove this override
-type JestEnvironment = Omit<Environment, "buildNumber"> & {
-	buildNumber?: string | number;
-};
-type JestResults = Omit<Results, "tests" | "environment"> & {
-	tests: JestTest[];
-	environment?: JestEnvironment;
-};
-type JestCTRFReport = Omit<CTRFReport, "results"> & { results: JestResults };
 
 interface ReporterConfigOptions {
 	outputFile?: string;
@@ -43,7 +31,7 @@ interface ReporterConfigOptions {
 	osRelease?: string | undefined;
 	osVersion?: string | undefined;
 	buildName?: string | undefined;
-	buildNumber?: string | undefined;
+	buildNumber?: number | undefined;
 	buildUrl?: string | undefined;
 	repositoryName?: string | undefined;
 	repositoryUrl?: string | undefined;
@@ -52,8 +40,8 @@ interface ReporterConfigOptions {
 }
 
 class GenerateCtrfReport implements Reporter {
-	readonly ctrfReport: JestCTRFReport;
-	readonly ctrfEnvironment: JestEnvironment;
+	readonly ctrfReport: CTRFReport;
+	readonly ctrfEnvironment: Environment;
 	readonly reporterConfigOptions: ReporterConfigOptions;
 	readonly reporterName = "jest-ctrf-json-reporter";
 	readonly defaultOutputFile = "ctrf-report.json";
@@ -87,7 +75,7 @@ class GenerateCtrfReport implements Reporter {
 
 		this.ctrfReport = {
 			reportFormat: "CTRF",
-			specVersion: "0.0.0",
+			specVersion: CURRENT_SPEC_VERSION,
 			reportId: crypto.randomUUID(),
 			timestamp: new Date().toISOString(),
 			generatedBy: "jest-ctrf-json-reporter",
@@ -159,7 +147,7 @@ class GenerateCtrfReport implements Reporter {
 			// Look up any runtime metadata stored by the environment
 			const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName);
 
-			const test: JestTest = {
+			const test: CtrfTestBase = {
 				name: testCaseResult.fullName,
 				duration: testCaseResult.duration ?? 0,
 				status: this.mapStatus(testCaseResult.status),
@@ -171,10 +159,12 @@ class GenerateCtrfReport implements Reporter {
 				test.rawStatus = testCaseResult.status;
 				test.type = this.reporterConfigOptions.testType ?? "unit";
 				test.filePath = testResult.testFilePath;
-				test.retries = (testCaseResult.invocations ?? 1) - 1;
-				test.flaky =
-					testCaseResult.status === "passed" &&
-					(testCaseResult.invocations ?? 1) - 1 > 0;
+				const retries = (testCaseResult.invocations ?? 1) - 1;
+				test.retries = retries;
+				if (retries > 0) {
+					test.retryAttempts = this.buildRetryAttempts(testCaseResult, retries);
+				}
+				test.flaky = testCaseResult.status === "passed" && retries > 0;
 				test.suite = this.buildSuitePath(testResult, testCaseResult);
 			}
 
@@ -187,7 +177,7 @@ class GenerateCtrfReport implements Reporter {
 		});
 	}
 
-	extractFailureDetails(testResult: AssertionResult): Partial<JestTest> {
+	extractFailureDetails(testResult: AssertionResult): Partial<CtrfTestBase> {
 		const messageStackTracePattern = /^\s{4}at/mu;
 		// eslint-disable-next-line no-control-regex
 		const colorCodesPattern = /\x1b\[\d+m/gmu;
@@ -196,7 +186,7 @@ class GenerateCtrfReport implements Reporter {
 			testResult.status === "failed" &&
 			testResult.failureMessages !== undefined
 		) {
-			const failureDetails: Partial<JestTest> = {};
+			const failureDetails: Partial<CtrfTestBase> = {};
 			if (testResult.failureMessages !== undefined) {
 				const joinedMessages = testResult.failureMessages.join("\n");
 				const match = joinedMessages.match(messageStackTracePattern);
@@ -288,20 +278,37 @@ class GenerateCtrfReport implements Reporter {
 		}
 	}
 
-	hasEnvironmentDetails(environment: JestEnvironment): boolean {
+	hasEnvironmentDetails(environment: Environment): boolean {
 		return Object.keys(environment).length > 0;
 	}
 
 	buildSuitePath(
 		testResult: TestResult,
 		testCaseResult: AssertionResult,
-	): string {
+	): string[] {
 		const fileName = testResult.testFilePath.split("/").pop() ?? "";
 		const suiteParts = [fileName, ...testCaseResult.ancestorTitles];
-		return suiteParts.join(" > ");
+		return suiteParts;
 	}
 
-	private writeReportToFile(data: JestCTRFReport): void {
+	private buildRetryAttempts(
+		testResult: AssertionResult,
+		retries: number,
+	): RetryAttempt[] {
+		return Array.from({ length: retries }, (_, index) => {
+			const retryAttempt: RetryAttempt = {
+				attempt: index + 1,
+				status: "failed",
+			};
+			const retryReason = testResult.retryReasons?.[index];
+			if (retryReason !== undefined) {
+				retryAttempt.message = retryReason;
+			}
+			return retryAttempt;
+		});
+	}
+
+	private writeReportToFile(data: CTRFReport): void {
 		const filePath = path.join(
 			this.reporterConfigOptions.outputDir ?? this.defaultOutputDir,
 			this.filename,

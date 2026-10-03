@@ -5,7 +5,9 @@ const osPlatform = process.env.OS_PLATFORM;
 const osRelease = process.env.OS_RELEASE;
 const osVersion = process.env.OS_VERSION;
 const buildName = process.env.BUILD_NAME;
-const buildNumber = process.env.BUILD_NUMBER;
+const buildNumber = process.env.BUILD_NUMBER
+	? Number.parseInt(process.env.BUILD_NUMBER, 10)
+	: undefined;
 
 module.exports = {
 	preset: "ts-jest",

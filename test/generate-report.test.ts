@@ -2,9 +2,12 @@ import GenerateCtrfReport from "../src/generate-report";
 import type { TestResult, Status } from "@jest/test-result";
 import type { ReporterContext } from "@jest/reporters";
 import type { Config } from "@jest/types";
+import { CURRENT_SPEC_VERSION, validateStrict } from "ctrf";
 
 interface ReporterConfigOptions {
 	outputFile?: string;
+	minimal?: boolean;
+	buildNumber?: number;
 }
 
 describe("GenerateCtrfReport", () => {
@@ -23,6 +26,37 @@ describe("GenerateCtrfReport", () => {
 	});
 
 	describe("Set config options", () => {
+		it("emits the current CTRF specification version", () => {
+			expect(reporter.ctrfReport.specVersion).toBe(CURRENT_SPEC_VERSION);
+		});
+
+		it("produces a strictly valid base report", () => {
+			expect(() =>
+				validateStrict(reporter.ctrfReport, {
+					specVersion: CURRENT_SPEC_VERSION,
+				}),
+			).not.toThrow();
+		});
+
+		it("emits a numeric environment build number", () => {
+			const configuredReporter = new GenerateCtrfReport(
+				{} as Config.GlobalConfig,
+				{ minimal: true, buildNumber: 100 },
+				{} as ReporterContext,
+			);
+
+			configuredReporter.onRunStart();
+
+			expect(
+				configuredReporter.ctrfReport.results.environment?.buildNumber,
+			).toBe(100);
+			expect(() =>
+				validateStrict(configuredReporter.ctrfReport, {
+					specVersion: CURRENT_SPEC_VERSION,
+				}),
+			).not.toThrow();
+		});
+
 		describe("filename", () => {
 			it("should set filename from reporterConfigOptions if present", () => {
 				const mockFilename = "mockFilename.json";
@@ -90,51 +124,53 @@ describe("GenerateCtrfReport", () => {
 			["Test 2", "failed", 200],
 			["Test 3", "skipped", 300],
 			["Test 4", "pending", 50],
-		])('should correctly update the ctrfReport for test "%s" with status "%s" and duration %i', (testTitle, status, duration) => {
-			const mockTestCaseResult = {
-				status: status as Status,
-				fullName: testTitle,
-				duration: duration,
-			};
-			const mockResult: TestResult = {
-				testResults: [mockTestCaseResult],
-			} as TestResult;
+		])(
+			'should correctly update the ctrfReport for test "%s" with status "%s" and duration %i',
+			(testTitle, status, duration) => {
+				const mockTestCaseResult = {
+					status: status as Status,
+					fullName: testTitle,
+					duration: duration,
+				};
+				const mockResult: TestResult = {
+					testResults: [mockTestCaseResult],
+				} as TestResult;
 
-			(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
+				(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
 
-			const updatedTestResult =
-				reporter.ctrfReport.results.tests[
-					reporter.ctrfReport.results.tests.length - 1
-				];
+				const updatedTestResult =
+					reporter.ctrfReport.results.tests[
+						reporter.ctrfReport.results.tests.length - 1
+					];
 
-			expect(updatedTestResult.name).toBe(testTitle);
-			expect(updatedTestResult.status).toBe(status);
-			expect(updatedTestResult.duration).toBe(duration);
-		});
+				expect(updatedTestResult.name).toBe(testTitle);
+				expect(updatedTestResult.status).toBe(status);
+				expect(updatedTestResult.duration).toBe(duration);
+			},
+		);
 
-		it.each([
-			["todo"],
-			["disabled"],
-			["focused"],
-		])('should correctly update the ctrfReport for test with status "%s" as other', (status) => {
-			const mockTestCaseResult = {
-				status: status as Status,
-				fullName: "testTitle",
-				duration: 100,
-			};
-			const mockResult: TestResult = {
-				testResults: [mockTestCaseResult],
-			} as TestResult;
+		it.each([["todo"], ["disabled"], ["focused"]])(
+			'should correctly update the ctrfReport for test with status "%s" as other',
+			(status) => {
+				const mockTestCaseResult = {
+					status: status as Status,
+					fullName: "testTitle",
+					duration: 100,
+				};
+				const mockResult: TestResult = {
+					testResults: [mockTestCaseResult],
+				} as TestResult;
 
-			(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
+				(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
 
-			const updatedTestResult =
-				reporter.ctrfReport.results.tests[
-					reporter.ctrfReport.results.tests.length - 1
-				];
+				const updatedTestResult =
+					reporter.ctrfReport.results.tests[
+						reporter.ctrfReport.results.tests.length - 1
+					];
 
-			expect(updatedTestResult.status).toBe("other");
-		});
+				expect(updatedTestResult.status).toBe("other");
+			},
+		);
 	});
 
 	describe("updateTotalsFromTestResult", () => {
@@ -161,24 +197,27 @@ describe("GenerateCtrfReport", () => {
 			["todo", 0, 0, 0, 0, 1],
 			["disabled", 0, 0, 0, 0, 1],
 			["focused", 0, 0, 0, 0, 1],
-		])("should update for status %s", (status, passed, failed, skipped, pending, other) => {
-			const mockTestCaseResult = {
-				status: status as Status,
-				fullName: "Test Case Full Name",
-				duration: 100,
-			};
-			const mockResult: TestResult = {
-				testResults: [mockTestCaseResult],
-			} as TestResult;
+		])(
+			"should update for status %s",
+			(status, passed, failed, skipped, pending, other) => {
+				const mockTestCaseResult = {
+					status: status as Status,
+					fullName: "Test Case Full Name",
+					duration: 100,
+				};
+				const mockResult: TestResult = {
+					testResults: [mockTestCaseResult],
+				} as TestResult;
 
-			(reporter as any).updateTotalsFromTestResult(mockResult);
+				(reporter as any).updateTotalsFromTestResult(mockResult);
 
-			expect(reporter.ctrfReport.results.summary.passed).toBe(passed);
-			expect(reporter.ctrfReport.results.summary.failed).toBe(failed);
-			expect(reporter.ctrfReport.results.summary.skipped).toBe(skipped);
-			expect(reporter.ctrfReport.results.summary.pending).toBe(pending);
-			expect(reporter.ctrfReport.results.summary.other).toBe(other);
-		});
+				expect(reporter.ctrfReport.results.summary.passed).toBe(passed);
+				expect(reporter.ctrfReport.results.summary.failed).toBe(failed);
+				expect(reporter.ctrfReport.results.summary.skipped).toBe(skipped);
+				expect(reporter.ctrfReport.results.summary.pending).toBe(pending);
+				expect(reporter.ctrfReport.results.summary.other).toBe(other);
+			},
+		);
 	});
 });
 
@@ -195,6 +234,58 @@ describe("GenerateDetailedCtrfReport", () => {
 			mockreporterOptions,
 			mockreporterContext,
 		);
+	});
+
+	it("emits the suite hierarchy as an ordered string array", () => {
+		const mockTestCaseResult = {
+			status: "passed" as Status,
+			fullName: "parent child Test Case Full Name",
+			ancestorTitles: ["parent", "child"],
+			duration: 100,
+		};
+		const mockResult = {
+			testFilePath: "/path/to/test.ts",
+			testResults: [mockTestCaseResult],
+		} as TestResult;
+
+		(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
+
+		expect(reporter.ctrfReport.results.tests[0].suite).toEqual([
+			"test.ts",
+			"parent",
+			"child",
+		]);
+	});
+
+	it("emits conformant history for retried tests", () => {
+		const mockTestCaseResult = {
+			status: "passed" as Status,
+			fullName: "retried test",
+			ancestorTitles: ["retry suite"],
+			duration: 100,
+			invocations: 3,
+			retryReasons: ["first failure", "second failure"],
+		};
+		const mockResult = {
+			testFilePath: "/path/to/retry.test.ts",
+			testResults: [mockTestCaseResult],
+		} as TestResult;
+
+		(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
+		(reporter as any).updateTotalsFromTestResult(mockResult);
+
+		const test = reporter.ctrfReport.results.tests[0];
+		expect(test.retries).toBe(2);
+		expect(test.flaky).toBe(true);
+		expect(test.retryAttempts).toEqual([
+			{ attempt: 1, status: "failed", message: "first failure" },
+			{ attempt: 2, status: "failed", message: "second failure" },
+		]);
+		expect(() =>
+			validateStrict(reporter.ctrfReport, {
+				specVersion: CURRENT_SPEC_VERSION,
+			}),
+		).not.toThrow();
 	});
 
 	it("should update the ctrfReport message with error description from failureMessages on failed builds", () => {
