@@ -42,7 +42,7 @@ export interface CtrfJestConfig {
 	appName?: string;
 	appVersion?: string;
 	buildName?: string;
-	buildNumber?: string;
+	buildNumber?: number;
 	buildUrl?: string;
 	repositoryName?: string;
 	repositoryUrl?: string;
