@@ -337,12 +337,24 @@ describe("GenerateDetailedCtrfReport", () => {
 		);
 	});
 
-	it("should append failureDetails to trace", () => {
+	it("should not append failureDetails to trace", () => {
 		const mockTestCaseResult = {
 			status: "failed" as Status,
 			fullName: "Test Case Full Name",
 			ancestorTitles: ["parent"],
-			failureDetails: ["details"],
+			failureDetails: [
+				{
+					matcherResult: {
+						actual: undefined,
+						expected: "b",
+						message:
+							'expect(received).toBe(expected) // Object.is equality\n\nExpected: "b"\nReceived: undefined',
+						name: "toBe",
+						pass: false,
+					},
+				},
+				{},
+			],
 			duration: 100,
 			failureMessages: [
 				'Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m"b"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at Object.<anonymous> (/jest-ctrf-json-reporter/test/generate-report.test.ts:133:41)\n    at Promise.then.completed (/jest-ctrf-json-reporter/node_modules/jest-circus/build/utils.js:298:28)\n',
@@ -358,7 +370,7 @@ describe("GenerateDetailedCtrfReport", () => {
 		const updatedTestResult = reporter.ctrfReport.results.tests[0];
 
 		expect(updatedTestResult.trace).toBe(
-			"at Object.<anonymous> (/jest-ctrf-json-reporter/test/generate-report.test.ts:133:41)\nat Promise.then.completed (/jest-ctrf-json-reporter/node_modules/jest-circus/build/utils.js:298:28)\n\n\ndetails",
+			"at Object.<anonymous> (/jest-ctrf-json-reporter/test/generate-report.test.ts:133:41)\nat Promise.then.completed (/jest-ctrf-json-reporter/node_modules/jest-circus/build/utils.js:298:28)\n",
 		);
 	});
 });
