@@ -202,13 +202,6 @@ class GenerateCtrfReport implements Reporter {
 					})
 					.join("\n");
 			}
-
-			if (testResult.failureDetails !== undefined) {
-				failureDetails.trace = failureDetails.trace?.concat(
-					"\n\n",
-					testResult.failureDetails.join("\n"),
-				);
-			}
 			return failureDetails;
 		}
 		return {};
