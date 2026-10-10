@@ -1,4 +1,4 @@
-import { identityValue, runIdentity, testIdentity } from "../src/identity";
+import { identityValue, testIdentity } from "../src/identity";
 
 describe("identity semantics", () => {
 	it("normalizes paths but preserves suite component boundaries", () => {
@@ -17,9 +17,13 @@ describe("identity semantics", () => {
 			testIdentity("runner", { ...a, filePath: "tests/other.ts" }),
 		);
 	});
-	it("shares configured run identity and creates independent standalone runs", () => {
-		expect(runIdentity("coordinated-run")).toBe("coordinated-run");
-		expect(runIdentity()).not.toBe(runIdentity());
+	it("includes only explicitly supplied run identity", () => {
+		for (const runId of [undefined, "", "coordinated-run"]) {
+			const reporter = new Reporter({} as never, { runId }, {} as never);
+			expect(JSON.parse(JSON.stringify(reporter.ctrfReport)).runId).toBe(
+				runId || undefined,
+			);
+		}
 		expect(() => identityValue(" ", "shardId")).toThrow();
 	});
 	it("supports an explicit case resolver without allowing empty identity", () => {
@@ -87,7 +91,8 @@ it("resets artifact, run and executions when a reporter is reused in watch mode"
 	reporter.onRunStart();
 	reporter.onTestResult({} as never, result as never);
 	expect(reporter.ctrfReport.reportId).not.toBe(first.reportId);
-	expect(reporter.ctrfReport.runId).not.toBe(first.runId);
+	expect(reporter.ctrfReport.runId).toBeUndefined();
+	expect(first.runId).toBeUndefined();
 	expect(reporter.ctrfReport.results.tests).toHaveLength(1);
 	expect(reporter.ctrfReport.results.tests[0].testId).toBe(firstTest.testId);
 	expect(firstTest.attemptId).toBeTruthy();

@@ -1,7 +1,6 @@
 import {
 	identityValue,
 	projectIdentity,
-	runIdentity,
 	testIdentity,
 	type IdentityOptions,
 } from "./identity";
@@ -85,7 +84,7 @@ class GenerateCtrfReport implements Reporter {
 
 		this.ctrfReport = {
 			reportFormat: "CTRF",
-			runId: runIdentity(this.reporterConfigOptions.runId),
+			runId: this.reporterConfigOptions.runId || undefined,
 			specVersion: CURRENT_SPEC_VERSION,
 			reportId: crypto.randomUUID(),
 			timestamp: new Date().toISOString(),
@@ -131,7 +130,7 @@ class GenerateCtrfReport implements Reporter {
 		if (this.runStarted) {
 			this.ctrfReport.reportId = crypto.randomUUID();
 			this.ctrfReport.timestamp = new Date().toISOString();
-			this.ctrfReport.runId = runIdentity(this.reporterConfigOptions.runId);
+			this.ctrfReport.runId = this.reporterConfigOptions.runId || undefined;
 			this.ctrfReport.results.tests = [];
 			this.ctrfReport.results.summary = {
 				tests: 0,
