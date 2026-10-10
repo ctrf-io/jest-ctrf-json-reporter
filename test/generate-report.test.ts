@@ -277,7 +277,7 @@ describe("GenerateDetailedCtrfReport", () => {
 		const test = reporter.ctrfReport.results.tests[0];
 		expect(test.retries).toBe(2);
 		expect(test.flaky).toBe(true);
-		expect(test.retryAttempts).toEqual([
+		expect(test.retryAttempts).toMatchObject([
 			{ attempt: 1, status: "failed", message: "first failure" },
 			{ attempt: 2, status: "failed", message: "second failure" },
 		]);

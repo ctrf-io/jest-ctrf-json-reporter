@@ -1,3 +1,9 @@
+import {
+	identityValue,
+	projectIdentity,
+	testIdentity,
+	type IdentityOptions,
+} from "./identity";
 import type {
 	TestResult,
 	Test,
@@ -20,7 +26,7 @@ import path from "node:path";
 import * as crypto from "node:crypto";
 import { consumeTestMetadata } from "./storage";
 
-interface ReporterConfigOptions {
+interface ReporterConfigOptions extends IdentityOptions {
 	outputFile?: string;
 	outputDir?: string;
 	minimal?: boolean;
@@ -55,6 +61,9 @@ class GenerateCtrfReport implements Reporter {
 		_reporterContext: ReporterContext,
 	) {
 		this.reporterConfigOptions = {
+			runId: reporterOptions?.runId,
+			shardId: identityValue(reporterOptions?.shardId, "shardId"),
+			testIdResolver: reporterOptions?.testIdResolver,
 			outputFile: reporterOptions?.outputFile ?? this.defaultOutputFile,
 			outputDir: reporterOptions?.outputDir ?? this.defaultOutputDir,
 			minimal: reporterOptions?.minimal ?? false,
@@ -75,6 +84,7 @@ class GenerateCtrfReport implements Reporter {
 
 		this.ctrfReport = {
 			reportFormat: "CTRF",
+			runId: this.reporterConfigOptions.runId || undefined,
 			specVersion: CURRENT_SPEC_VERSION,
 			reportId: crypto.randomUUID(),
 			timestamp: new Date().toISOString(),
@@ -114,7 +124,26 @@ class GenerateCtrfReport implements Reporter {
 		}
 	}
 
+	private runStarted = false;
+
 	onRunStart(): void {
+		if (this.runStarted) {
+			this.ctrfReport.reportId = crypto.randomUUID();
+			this.ctrfReport.timestamp = new Date().toISOString();
+			this.ctrfReport.runId = this.reporterConfigOptions.runId || undefined;
+			this.ctrfReport.results.tests = [];
+			this.ctrfReport.results.summary = {
+				tests: 0,
+				passed: 0,
+				failed: 0,
+				skipped: 0,
+				pending: 0,
+				other: 0,
+				start: 0,
+				stop: 0,
+			};
+		}
+		this.runStarted = true;
 		this.ctrfReport.results.summary.start = Date.now();
 		this.setEnvironmentDetails(this.reporterConfigOptions ?? {});
 		if (this.hasEnvironmentDetails(this.ctrfEnvironment)) {
@@ -125,7 +154,10 @@ class GenerateCtrfReport implements Reporter {
 	onTestStart(): void {}
 
 	onTestResult(_test: Test, testResult: TestResult): void {
-		this.updateCtrfTestResultsFromTestResult(testResult);
+		this.updateCtrfTestResultsFromTestResult(
+			testResult,
+			projectIdentity(_test.context?.config.displayName),
+		);
 		this.updateTotalsFromTestResult(testResult);
 	}
 
@@ -142,12 +174,33 @@ class GenerateCtrfReport implements Reporter {
 		}
 	}
 
-	private updateCtrfTestResultsFromTestResult(testResult: TestResult): void {
+	private updateCtrfTestResultsFromTestResult(
+		testResult: TestResult,
+		projectScope = "",
+	): void {
 		testResult.testResults.forEach((testCaseResult) => {
 			// Look up any runtime metadata stored by the environment
-			const runtimeMetadata = consumeTestMetadata(testCaseResult.fullName);
+			const runtimeMetadata = consumeTestMetadata(
+				JSON.stringify([
+					testResult.testFilePath,
+					projectScope,
+					testCaseResult.fullName,
+				]),
+			);
 
 			const test: CtrfTestBase = {
+				testId: testIdentity(
+					"jest",
+					{
+						name: testCaseResult.title,
+						suite: testCaseResult.ancestorTitles,
+						variant: projectScope,
+						filePath: testResult.testFilePath,
+					},
+					this.reporterConfigOptions,
+				),
+				executionId: crypto.randomUUID(),
+				attemptId: crypto.randomUUID(),
 				name: testCaseResult.fullName,
 				duration: testCaseResult.duration ?? 0,
 				status: this.mapStatus(testCaseResult.status),
@@ -231,6 +284,11 @@ class GenerateCtrfReport implements Reporter {
 	}
 
 	setEnvironmentDetails(reporterConfigOptions: ReporterConfigOptions): void {
+		if (reporterConfigOptions.shardId !== undefined)
+			this.ctrfEnvironment.shardId = identityValue(
+				reporterConfigOptions.shardId,
+				"shardId",
+			);
 		if (reporterConfigOptions.appName !== undefined) {
 			this.ctrfEnvironment.appName = reporterConfigOptions.appName;
 		}
@@ -291,6 +349,7 @@ class GenerateCtrfReport implements Reporter {
 		return Array.from({ length: retries }, (_, index) => {
 			const retryAttempt: RetryAttempt = {
 				attempt: index + 1,
+				attemptId: crypto.randomUUID(),
 				status: "failed",
 			};
 			const retryReason = testResult.retryReasons?.[index];

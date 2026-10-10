@@ -1,3 +1,4 @@
+import { projectIdentity } from "./identity";
 /**
  * CTRF Jest Environment
  *
@@ -121,6 +122,8 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 	// @ts-expect-error TypeScript mixin class limitation
 	return class CtrfJestEnvironment extends Base {
 		private testPath: string;
+		private sourceTestPath: string;
+		private projectScope: string;
 		private config: CtrfJestConfig;
 		private runContext: RunContext = {
 			executables: [],
@@ -140,6 +143,8 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 				"projectConfig" in config ? config.projectConfig : config;
 			this.config = projectConfig?.testEnvironmentOptions || {};
 			this.testPath = path.relative(projectConfig.rootDir, context.testPath);
+			this.sourceTestPath = path.resolve(context.testPath);
+			this.projectScope = projectIdentity(projectConfig.displayName);
 		}
 
 		async setup(): Promise<void> {
@@ -425,9 +430,12 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 				// Jest uses: "describe block > nested describe > test name"
 				const fullName = testData.fullName.replace(`${this.testPath} > `, "");
 
-				storeTestMetadata(fullName, {
-					extra: { ...testData.metadata.extra },
-				});
+				storeTestMetadata(
+					JSON.stringify([this.sourceTestPath, this.projectScope, fullName]),
+					{
+						extra: { ...testData.metadata.extra },
+					},
+				);
 			}
 		}
 	};
