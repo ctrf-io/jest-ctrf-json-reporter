@@ -44,7 +44,9 @@ describe("CtrfJestEnvironment hook metadata", () => {
 		env.handleTestEvent({ name: "test_fn_success", test }, state);
 		env.handleTestEvent({ name: "run_finish" }, state);
 
-		const metadata = consumeTestMetadata("should fetch user");
+		const metadata = consumeTestMetadata(
+			JSON.stringify(["/example.test.ts", "", "should fetch user"]),
+		);
 		expect(metadata?.extra).toEqual({ owner: "alice" });
 	});
 
@@ -63,7 +65,9 @@ describe("CtrfJestEnvironment hook metadata", () => {
 
 		env.handleTestEvent({ name: "run_finish" }, state);
 
-		const metadata = consumeTestMetadata("should update user");
+		const metadata = consumeTestMetadata(
+			JSON.stringify(["/example.test.ts", "", "should update user"]),
+		);
 		expect(metadata?.extra).toEqual({ result: "ok" });
 	});
 
@@ -83,7 +87,9 @@ describe("CtrfJestEnvironment hook metadata", () => {
 
 		env.handleTestEvent({ name: "run_finish" }, state);
 
-		const metadata = consumeTestMetadata("should delete user");
+		const metadata = consumeTestMetadata(
+			JSON.stringify(["/example.test.ts", "", "should delete user"]),
+		);
 		expect(metadata?.extra).toEqual({ owner: "alice", priority: "P1" });
 	});
 });

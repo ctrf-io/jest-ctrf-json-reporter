@@ -2,7 +2,7 @@
 
 > Save Jest test results as a JSON file
 
-![CTRF 0.1.0](https://img.shields.io/badge/0.1.0-red?label=ctrf&labelColor=green)
+![CTRF 0.2.0](https://img.shields.io/badge/0.1.0-red?label=ctrf&labelColor=green)
 [![build](https://github.com/ctrf-io/jest-ctrf-json-reporter/actions/workflows/main.yaml/badge.svg)](https://github.com/ctrf-io/jest-ctrf-json-reporter/actions/workflows/main.yaml)
 ![NPM Downloads](https://img.shields.io/npm/d18m/jest-ctrf-json-reporter?logo=npm)
 ![npm bundle size](https://img.shields.io/bundlephobia/minzip/jest-ctrf-json-reporter?label=Size)
@@ -200,3 +200,13 @@ The resulting `extra` field in the CTRF report:
 | Primitives | Later call overwrites earlier       | `extra({ owner: 'a' })` then `extra({ owner: 'b' })` → `{ owner: 'b' }`                                        |
 | Objects    | Deep merged - nested keys preserved | `extra({ build: { id: '1' } })` then `extra({ build: { url: '...' } })` → `{ build: { id: '1', url: '...' } }` |
 | Arrays     | Concatenated across calls           | `extra({ tags: ['smoke'] })` then `extra({ tags: ['e2e'] })` → `{ tags: ['smoke', 'e2e'] }`                    |
+
+## Identity and lineage
+
+Reports include a UUID `reportId` for the emitted document, `runId` for the logical run, a stable `testId` for each logical test, and an `executionId` for each execution lifecycle. The final test result and each retry history entry have distinct `attemptId` values. Display names and runtime `extra` metadata remain independent of identity. Identity is included in minimal output.
+
+Set reporter options `runId` and `shardId` to coordinate distributed runs: all shards of one run should share the same non-empty `runId` and have distinct `shardId` values. Otherwise a standalone run ID is generated. Generic identity values are opaque strings, not necessarily UUIDs.
+
+Where the framework does not provide a stable logical identifier, IDs are derived from the available file, suite, test name and variant. For custom stability requirements, set `testIdResolver: (test) => "your-stable-id"`; its input exposes `name`, optional `filePath`, `suite` and `variant`. Choose an ID stable across runs and unique within your test namespace. Renaming or moving a test can change the default ID.
+
+Jest project `displayName` participates in logical identity and runtime metadata routing. Give projects distinct stable display names when they execute the same file as different cases.
