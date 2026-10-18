@@ -59,7 +59,50 @@ To set up the project for local development:
    npm run build
    ```
 
-Make sure all checks pass before submitting a pull request.
+Run the relevant checks before submitting a pull request and report their results.
+CI publishes the existing reporter tests through GitHub Test Reporter. The
+reference Node job maintains a `reporter-tests` PR comment, separately from the
+conformance comment; both comments are overwritten on subsequent builds.
+
+### Conformance tests
+
+For reporter output changes, update the affected conformance fixtures and run:
+
+```bash
+npm run test:standard:conformance:unit
+npm run test:standard:conformance:integration
+```
+
+`npm run test:standard:conformance` runs both levels even when unit fails.
+The [suite guide](tests/standard/conformance/README.md) explains setup and file roles.
+Unit tests use controlled native inputs; integration tests install the packed
+reporter and run real Jest with an independent native observer. They remain
+separate from `npm test`.
+
+Keep common family IDs stable, update `jest.json` when capabilities change,
+and provide positive evidence for supported properties. Unsupported optional
+features are skipped with reasons; unrecorded broken behavior must fail.
+Expected-failure entries in `tests/standard/conformance/expected-failures.mjs`
+must link to a GitHub issue and match specific levels/samples. Keep checks running;
+unexpected passes and changed failures must fail. Remove markers with the fix.
+Check schema and written-specification implications, including valid omission and
+conditional rules. Recommendations remain advisory. Do not change expectations
+to match incorrect reporter output.
+
+CI runs both conformance levels as separate steps in the integration
+job on Node 22, 24 and 26. A unit failure does not prevent integration from running.
+The job publishes CTRF results for both levels through GitHub Test Reporter, with
+the built-in summary and collapsed test table. Node 24 also maintains one PR
+comment tagged `reporter-conformance`, overwriting it on later runs. It describes
+the reference runtime; check the full matrix for compatibility results. Fork PRs
+keep build summaries/artifacts without posting a comment. Expected failures retain
+explicit test-name labels and use Other with defect metadata rather than passed.
+Unit/integration names and identities stay distinct; checker controls are included.
+CTRF artifacts, conformance summaries and integration reports/logs are retained,
+including on failure. The commands use the console and CTRF reporters selected by
+`tests/standard/conformance/run.mjs`; no additional runner JSON output is required.
+In your PR, include commands and results and explain skips, expected failures and
+warnings. Track defect details and fixes in GitHub issues rather than these docs.
 
 ## Finding Bugs
 
@@ -105,19 +148,3 @@ Run `npm run build:check` to check source types with TypeScript 7, and
 `npm run all` for the repository checks and build.
 The tsup declaration build uses the TypeScript 6 API; its deprecation option
 is scoped to `tsup.config.ts` rather than the native compiler configuration.
-
-## Reporter conformance
-
-Run `npm run test:standard:conformance` when changing report emission, schema or
-specification support. Its separate unit and installed-package integration suites
-supplement `npm test`; see [the guide](tests/standard/conformance/README.md) and
-[agent instructions](AGENTS.md) for capability declarations and strict expected
-failures. Fix issues own known-defect details. Do not skip supported defects or
-silently broaden exceptions to keep CI green.
-
-Schema/spec changes require reviewing affected family IDs, required children,
-source mappings, boundaries, recommendations, capabilities, both fixture levels,
-checker controls and exception records, including evidence for unchanged tests.
-CI keeps ordinary reporter results and conformance results separately labelled,
-with built-in GitHub Test Reporter summaries, artifacts and updating reference
-runtime PR comments. Adding conformance does not change the release workflow.

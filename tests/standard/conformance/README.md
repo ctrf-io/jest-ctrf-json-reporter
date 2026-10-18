@@ -1,50 +1,45 @@
-# Reporter conformance
+# Standard conformance
 
-These suites check serialized Jest reporter output against the released CTRF
-schema and specification. They supplement the existing reporter tests.
+Conformance uses shared property and report/relationship checks at both unit and
+integration levels, against the declared CTRF specification version. These are
+coverage families, not an exhaustive set of cases. Existing reporter tests are separate.
 
 ```sh
-npm run test:standard:conformance
 npm run test:standard:conformance:unit
 npm run test:standard:conformance:integration
+# Run both, even if unit fails:
+npm run test:standard:conformance
 ```
 
-Unit fixtures feed native results into the built producer. Integration installs a
-packed distribution in a fresh consumer and runs real Jest in-band and with
-workers. Native evidence supplies independent outcomes, retry counts and timing;
-fixtures also exercise runtime metadata, minimal/default output, empty runs,
-repeat identity and coordinated partition labels.
+Unit tests capture output from controlled native inputs; separate controls
+test the checker. Integration installs the packed reporter in a temporary consumer
+and runs real Jest in-band and with workers. It needs npm registry access to
+install the pinned dependencies. Missing setup fails the run.
 
-`jest.json` declares supported properties and relationships. Unsupported optional
-features stay visible as reasoned skips. Applicable unfinished cases are pending;
-supported defects fail unless a narrow exception in `expected-failures.mjs`
-reproduces its exact sample, level and assertion. Unexpected passes require review.
-Follow linked fix issues for defect details. A green baseline containing expected
-failures does not establish full conformance.
+Temporary consumers are cleaned automatically. Set `CTRF_STANDARD_ARTIFACTS` to an
+absolute directory outside the checkout to retain integration reports and logs.
 
-The catalogue and checker are copied unchanged from the Playwright pilot at
-`ce5a283425b6d64fd49e197a10a0c0cba1adebcc`; the normative source is the released
-Core contract, loaded through the exact `ctrf` dependency. Jest uses Node's test
-runner for both suites, native Jest evidence and reporter-local defect matching.
-The local adapter preserves the advisory severity of total-count equality in
-Core §8.1. Exact runtime object comparisons verify Jest’s advertised metadata
-contract, rather than imposing its merge API on other reporters.
-Jest provides retry reasons, but no per-retry duration: unsupported optional
-attempt timing has no fabricated values. Keep source revisions explicit until a
-shared distribution is established.
+Both suites generate schema-validated CTRF under `$CTRF_STANDARD_ARTIFACTS/reports`
+(or `ctrf/reports` locally). CI publishes these through GitHub Test Reporter in the
+integration job summary and retains CTRF artifacts. The reference Node job also
+maintains one PR comment using the built-in summary and collapsed test table;
+no custom template is needed. Fork PRs retain build summaries and artifacts with
+read-only tokens. Unit results include checker controls. Expected failures use **Other**, explicit labels and defect metadata;
+they are not counted as passed. Unit and integration identities remain distinct.
 
-Results go to `ctrf/reports/`, or `$CTRF_STANDARD_ARTIFACTS/reports/` with retained
-integration diagnostics alongside them. Fixture reports are inputs, never test
-result publication files. Expected failures use CTRF `other`, explicit labels and
-follow-up metadata. Recommendations are warnings. Checker controls are identified
-separately from contract families.
+- `shared/catalogue.json`: common family IDs for this pilot; property paths are
+  checked against the schema. It is a local snapshot pending shared distribution.
+- `shared/checks.mjs`: schema and specification assertions.
+- `jest.json`: capabilities and reasons for unsupported entries.
+- `expected.mjs` and native fixtures: independent Jest expectations.
+- `jest-checks.mjs`: native metadata comparisons and prose constraints.
 
-CI retains every Node runtime's reports and publishes separate updating Node 24
-PR comments for reporter tests and conformance using GitHub Test Reporter's
-built-in summary and collapsed test table. Same-repository PRs can update comments;
-forks retain build summaries and artifacts. Release workflow behavior is unchanged.
-
-When the contract changes, assess affected family IDs, schema/prose constraints,
-severity, capabilities, source mappings, boundary/omission cases, both levels,
-checker controls and exception records. Update the catalogue deliberately; a
-property registration is a family of evidence, not exhaustive specification coverage.
+Unsupported optional features remain skipped with reasons. Supported fields need
+positive evidence; all emitted fields undergo full-document validation. Mandatory
+violations fail, recommendations warn, and missing fixture evidence cannot count
+as a pass. Expected-failure entries in `expected-failures.mjs` link to GitHub issues
+and match specific samples. They still execute and
+are reported separately as expected failures; different errors or unexpected
+passes fail CI. Remove the matching markers when fixing a defect. Expected
+failures are not conformance passes.
+Test tooling is excluded from the published package.
