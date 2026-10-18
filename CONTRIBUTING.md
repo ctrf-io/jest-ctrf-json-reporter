@@ -105,3 +105,19 @@ Run `npm run build:check` to check source types with TypeScript 7, and
 `npm run all` for the repository checks and build.
 The tsup declaration build uses the TypeScript 6 API; its deprecation option
 is scoped to `tsup.config.ts` rather than the native compiler configuration.
+
+## Reporter conformance
+
+Run `npm run test:standard:conformance` when changing report emission, schema or
+specification support. Its separate unit and installed-package integration suites
+supplement `npm test`; see [the guide](tests/standard/conformance/README.md) and
+[agent instructions](AGENTS.md) for capability declarations and strict expected
+failures. Fix issues own known-defect details. Do not skip supported defects or
+silently broaden exceptions to keep CI green.
+
+Schema/spec changes require reviewing affected family IDs, required children,
+source mappings, boundaries, recommendations, capabilities, both fixture levels,
+checker controls and exception records, including evidence for unchanged tests.
+CI keeps ordinary reporter results and conformance results separately labelled,
+with built-in GitHub Test Reporter summaries, artifacts and updating reference
+runtime PR comments. Adding conformance does not change the release workflow.

@@ -39,7 +39,10 @@
 		"format": "biome format --write .",
 		"format:check": "biome format .",
 		"all": "npm run build:check && npm run test && npm run lint:check && npm run format:check && npm run build",
-		"check": "biome check ."
+		"check": "biome check .",
+		"test:standard:conformance": "node tests/standard/conformance/run-all.mjs",
+		"test:standard:conformance:unit": "npm run build && node tests/standard/conformance/run.mjs unit",
+		"test:standard:conformance:integration": "npm run build && node tests/standard/conformance/run.mjs integration"
 	},
 	"repository": {
 		"type": "git",
@@ -75,11 +78,13 @@
 		"@biomejs/biome": "2.5.15",
 		"@types/jest": "30.0.0",
 		"@types/node": "26.6.5",
+		"@typescript/native": "npm:typescript@7.0.2",
+		"ajv": "8.20.0",
+		"ajv-formats": "3.0.1",
 		"jest": "30.5.2",
 		"ts-jest": "29.4.14",
 		"tsup": "8.5.1",
-		"typescript": "npm:@typescript/typescript6@6.0.2",
-		"@typescript/native": "npm:typescript@7.0.2"
+		"typescript": "npm:@typescript/typescript6@6.0.2"
 	},
 	"dependencies": {
 		"ctrf": "0.5.0"
