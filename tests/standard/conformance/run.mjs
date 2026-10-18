@@ -38,9 +38,6 @@ try {
 			"--test-reporter=./tests/standard/conformance/reporters/node.mjs",
 			"--test-reporter-destination=stdout",
 			`tests/standard/conformance/${level}/conformance.test.mjs`,
-			...(level === "unit"
-				? ["tests/standard/conformance/unit/checker.test.mjs"]
-				: []),
 		],
 		{ cwd: root, env, stdio: "inherit", timeout: 300_000 },
 	);

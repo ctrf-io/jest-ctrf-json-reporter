@@ -124,7 +124,11 @@ jobs:
       - name: Install
         id: install
         run: npm ci
-      - name: Run unit conformance and checker controls
+      - name: Run shared checker controls
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:standard:checker
+      - name: Run unit conformance
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:standard:conformance:unit
       - name: Run packed reporter conformance through real Jest
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -134,9 +138,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         with:
           report-path: '${{ runner.temp }}/conformance/reports/*.json'
-          title: 'Reporter conformance (Node ${{ matrix.node }})'
+          title: 'Reporter conformance — contract families (Node ${{ matrix.node }})'
           summary-report: true
-          test-report: true
+          suite-folded-report: true
+          group-by: suite
           collapse-large-reports: true
           pull-request: ${{ matrix.node == '24' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
           overwrite-comment: true
@@ -145,6 +150,23 @@ jobs:
           artifact-name: ctrf-conformance-node-${{ matrix.node }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish shared checker controls
+        uses: ctrf-io/github-test-reporter@v1
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        with:
+          report-path: '${{ runner.temp }}/conformance/checker-reports/*.json'
+          title: 'Shared checker controls (Node ${{ matrix.node }})'
+          summary-report: true
+          suite-folded-report: true
+          group-by: suite
+          pull-request: ${{ matrix.node == '24' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+          overwrite-comment: true
+          comment-tag: reporter-checker
+          upload-artifact: true
+          artifact-name: ctrf-checker-node-${{ matrix.node }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload conformance results and diagnostics
         uses: actions/upload-artifact@v4
         if: always()

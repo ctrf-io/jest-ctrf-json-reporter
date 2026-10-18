@@ -1,18 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { getSchema } from "ctrf";
 import {
 	catalogue,
-	checkEntry,
-	reportChecks,
 	valuesAt,
 	disposition,
-} from "../shared/checks.mjs";
-import { runConformance } from "../expected-failures.mjs";
-import { checkJestEntry } from "../jest-checks.mjs";
-import { createReport } from "../reporters/ctrf.mjs";
-import { unitContext } from "./fixtures.mjs";
+} from "../tests/standard/conformance/shared/checks.mjs";
+import { runConformance } from "../tests/standard/conformance/expected-failures.mjs";
+import { checkJestEntry } from "../tests/standard/conformance/jest-checks.mjs";
+import { createReport } from "../tests/standard/conformance/reporters/ctrf.mjs";
+import { unitContext } from "../tests/standard/conformance/unit/fixtures.mjs";
 const property = (path) =>
 	catalogue.entries.find((entry) => entry.path === path);
 const rule = (name) => catalogue.entries.find((entry) => entry.rule === name);
@@ -69,50 +66,33 @@ function control() {
 		warnings: [],
 	};
 }
-test("checker / catalogue exactly covers expanded schema and shared relationships", () => {
-	const schema = getSchema("0.2.0");
-	const paths = [];
-	function walk(input, prefix = "") {
-		const node = input.$ref
-			? input.$ref
-					.slice(2)
-					.split("/")
-					.reduce((value, key) => value[key], schema)
-			: input;
-		for (const [key, child] of Object.entries(node.properties ?? {})) {
-			const path = prefix ? `${prefix}.${key}` : key;
-			paths.push(path);
-			walk(child, path);
-		}
-		if (node.items) walk(node.items, `${prefix}[]`);
-	}
-	walk(schema);
-	assert.deepEqual(
-		catalogue.entries
-			.filter((entry) => entry.kind === "property")
-			.map((entry) => entry.path),
-		paths,
-	);
-	assert.deepEqual(
-		catalogue.entries
-			.filter((entry) => entry.kind === "report")
-			.map((entry) => entry.rule)
-			.sort(),
-		Object.keys(reportChecks).sort(),
-	);
+test("Jest tooling / capability declarations cover the common inventory", () => {
 	const manifest = JSON.parse(
-		readFileSync(new URL("../jest.json", import.meta.url)),
+		readFileSync(
+			new URL("../tests/standard/conformance/jest.json", import.meta.url),
+		),
 	);
 	for (const entry of catalogue.entries) disposition(entry, manifest);
-	assert.equal(Object.keys(manifest.properties).length, paths.length);
-	assert.equal(
-		Object.keys(manifest.rules).length,
-		Object.keys(reportChecks).length,
+	assert.deepEqual(
+		Object.keys(manifest.properties).sort(),
+		catalogue.entries
+			.filter((e) => e.kind === "property")
+			.map((e) => e.path)
+			.sort(),
+	);
+	assert.deepEqual(
+		Object.keys(manifest.rules).sort(),
+		catalogue.entries
+			.filter((e) => e.kind === "report")
+			.map((e) => e.rule)
+			.sort(),
 	);
 });
 test("checker / capability skips do not hide emitted fields", () => {
 	const manifest = JSON.parse(
-		readFileSync(new URL("../jest.json", import.meta.url)),
+		readFileSync(
+			new URL("../tests/standard/conformance/jest.json", import.meta.url),
+		),
 	);
 	const context = unitContext();
 	for (const [path, capability] of Object.entries(manifest.properties))
@@ -123,109 +103,6 @@ test("checker / capability skips do not hide emitted fields", () => {
 				0,
 				path,
 			);
-});
-test("checker / accepts independent valid document and retry history", () => {
-	const context = control();
-	for (const name of [
-		"single-json-object",
-		"summary-matches-final-results",
-		"history-orders-contiguous-attempts",
-		"history-excludes-final-attempt",
-		"flaky-matches-attempt-outcomes",
-	])
-		checkEntry(rule(name), context);
-});
-for (const [name, mutate] of [
-	[
-		"single-json-object",
-		(sample) => {
-			sample.report.unknown = true;
-			sample.bytes = Buffer.from(JSON.stringify(sample.report));
-		},
-	],
-	[
-		"utf8-without-bom",
-		(sample) => {
-			sample.bytes = Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d]);
-		},
-	],
-	[
-		"summary-matches-final-results",
-		(sample) => {
-			sample.report.results.summary.passed++;
-		},
-	],
-	[
-		"history-orders-contiguous-attempts",
-		(sample) => {
-			sample.report.results.tests[0].retryAttempts[0].attempt = 2;
-		},
-	],
-	[
-		"retry-count-matches-history-length",
-		(sample) => {
-			sample.report.results.tests[0].retries = 2;
-		},
-	],
-	[
-		"history-excludes-final-attempt",
-		(sample) => {
-			sample.report.results.tests[0].retryAttempts.push({
-				attempt: 2,
-				status: "passed",
-			});
-		},
-	],
-	[
-		"flaky-matches-attempt-outcomes",
-		(sample) => {
-			sample.report.results.tests[0].flaky = false;
-		},
-	],
-	[
-		"respects-reserved-extension-ownership",
-		(sample) => {
-			sample.report.results.tests[0].extra = { "ctrf.not-owned": true };
-		},
-	],
-])
-	test(`checker / rejects independent ${name} mutation`, () => {
-		const context = control();
-		mutate(context.samples[0]);
-		assert.throws(() => reportChecks[name](context));
-	});
-test("checker / rejects source duration unit mismatch", () => {
-	const context = control();
-	context.samples[0].report.results.tests[0].duration *= 1000;
-	assert.throws(() =>
-		checkEntry(property("results.tests[].duration"), context),
-	);
-});
-test("checker / requires positive optional evidence and required children", () => {
-	assert.throws(
-		() => checkEntry(property("results.tests[].screenshot"), control()),
-		/No positive evidence/,
-	);
-	const context = control();
-	delete context.samples[0].report.results.tests[0].status;
-	assert.throws(
-		() => checkEntry(property("results.tests[].status"), context),
-		/missing/,
-	);
-});
-test("checker / missing contextual evidence fails; SHOULD deviation warns", () => {
-	assert.throws(
-		() => checkEntry(rule("case-identity-stable-across-runs"), control()),
-		/Missing repeated/,
-	);
-	assert.throws(
-		() => checkEntry(rule("coordinates-run-and-shard-identity"), control()),
-		/Missing shard/,
-	);
-	const context = control();
-	context.samples[0].report.results.summary.stop = 50;
-	checkEntry(rule("orders-start-and-stop"), context);
-	assert.equal(context.warnings.length, 1);
 });
 test("checker / compares complete runtime object source mapping", () => {
 	const context = control();
@@ -457,13 +334,19 @@ test("reporting / rejects invalid runner status and nonfinite timing", () => {
 });
 
 test("reporting / Node adapter retains skips, TODOs and failures without duplicate parents", async () => {
-	const { default: nodeReporter } = await import("../reporters/node.mjs");
+	const { default: nodeReporter } = await import(
+		"../tests/standard/conformance/reporters/node.mjs"
+	);
 	const { mkdtempSync, rmSync } = await import("node:fs");
 	const { tmpdir } = await import("node:os");
 	const { join } = await import("node:path");
-	const { reportPath } = await import("../reporters/ctrf.mjs");
+	const { reportPath } = await import(
+		"../tests/standard/conformance/reporters/ctrf.mjs"
+	);
 	const directory = mkdtempSync(join(tmpdir(), "ctrf-jest-report-control-"));
 	const previous = process.env.CTRF_STANDARD_ARTIFACTS;
+	const previousLevel = process.env.CTRF_CONFORMANCE_LEVEL;
+	process.env.CTRF_CONFORMANCE_LEVEL = "unit";
 	process.env.CTRF_STANDARD_ARTIFACTS = directory;
 	try {
 		async function* events() {
@@ -513,19 +396,64 @@ test("reporting / Node adapter retains skips, TODOs and failures without duplica
 	} finally {
 		if (previous === undefined) delete process.env.CTRF_STANDARD_ARTIFACTS;
 		else process.env.CTRF_STANDARD_ARTIFACTS = previous;
+		if (previousLevel === undefined) delete process.env.CTRF_CONFORMANCE_LEVEL;
+		else process.env.CTRF_CONFORMANCE_LEVEL = previousLevel;
 		rmSync(directory, { recursive: true, force: true });
 	}
 });
 
-test("checker / total count recommendation warns without hiding schema violations", () => {
-	const context = control();
-	context.samples[0].report.results.summary.tests = 2;
-	context.samples[0].expected.results.summary = { tests: 1 };
-	checkJestEntry(property("results.summary.tests"), context);
-	checkJestEntry(rule("summary-matches-final-results"), context);
-	assert.equal(context.warnings.length, 1);
-	context.samples[0].report.results.summary.tests = -1;
-	assert.throws(() =>
-		checkJestEntry(property("results.summary.tests"), context),
+test("reporting / groups contract categories and isolates expected failures", () => {
+	const name =
+		"conformance/property/results.environment.buildNumber [expected failure: invalid-build-number]";
+	const report = createReport(
+		[
+			{ name: "conformance/property/reportFormat", status: "passed" },
+			{
+				name: "conformance/report/summary-matches-final-results",
+				status: "skipped",
+			},
+			{ name, status: "passed" },
+			{ name: "setup error", status: "failed" },
+		],
+		"unit",
+		"node:test",
+		0,
+		1,
+	);
+	assert.deepEqual(
+		report.results.tests.map((t) => t.suite),
+		[
+			["Unit conformance", "Schema properties"],
+			["Unit conformance", "Specification relationships"],
+			["Unit conformance", "Expected failures (tracked defects)"],
+			["Unit conformance", "Runner/setup failures"],
+		],
+	);
+	assert.equal(report.results.summary.other, 1);
+	assert.equal(report.results.summary.skipped, 1);
+	assert.equal(report.results.summary.failed, 1);
+});
+test("reporting / keeps standard controls and native tooling outside contract artifacts", async () => {
+	const { reportPath } = await import(
+		"../tests/standard/conformance/reporters/ctrf.mjs"
+	);
+	const path = await import("node:path");
+	assert.notEqual(
+		path.dirname(reportPath("checker")),
+		path.dirname(reportPath("unit")),
+	);
+	assert.notEqual(
+		path.dirname(reportPath("tooling")),
+		path.dirname(reportPath("unit")),
+	);
+	assert.equal(
+		createReport(
+			[{ name: "checker/schema/control", status: "passed" }],
+			"checker",
+			"node:test",
+			0,
+			1,
+		).results.tests[0].suite[0],
+		"Shared checker controls",
 	);
 });

@@ -33,7 +33,7 @@
 		"build:check": "tsc -p . --noEmit",
 		"build:watch": "tsup --watch",
 		"clean": "rm -rf dist && rm -rf coverage && rm -rf ctrf",
-		"test": "npm run build && jest --config jest.config.cjs",
+		"test": "npm run build && jest --config jest.config.cjs && npm run test:tooling",
 		"lint": "biome lint --write . --unsafe",
 		"lint:check": "biome lint .",
 		"format": "biome format --write .",
@@ -42,7 +42,10 @@
 		"check": "biome check .",
 		"test:standard:conformance": "node tests/standard/conformance/run-all.mjs",
 		"test:standard:conformance:unit": "npm run build && node tests/standard/conformance/run.mjs unit",
-		"test:standard:conformance:integration": "npm run build && node tests/standard/conformance/run.mjs integration"
+		"test:standard:conformance:integration": "npm run build && node tests/standard/conformance/run.mjs integration",
+		"test:standard:checker": "node tests/standard/checker/run.mjs",
+		"test:standard": "node tests/standard/run-all.mjs",
+		"test:tooling": "node test/run-tooling.mjs"
 	},
 	"repository": {
 		"type": "git",
