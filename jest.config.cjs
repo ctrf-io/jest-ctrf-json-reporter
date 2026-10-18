@@ -11,6 +11,7 @@ const buildNumber = process.env.BUILD_NUMBER
 
 module.exports = {
 	preset: "ts-jest",
+	testMatch: ["<rootDir>/test/**/*.test.ts"],
 	testEnvironment: "node",
 	reporters: [
 		"default",
