@@ -26,9 +26,9 @@ import path from "node:path";
 import * as crypto from "node:crypto";
 import { consumeTestMetadata } from "./storage";
 
-const messageStackTracePattern = /^\s{4}at/mu;
+const testExecErrorStackTracePattern = /^\s{4}at/mu;
 // eslint-disable-next-line no-control-regex
-const colorCodesPattern = /\x1b\[[\d;]*m/gmu;
+const testExecErrorColorCodesPattern = /\x1b\[[\d;]*m/gmu;
 
 interface ReporterConfigOptions extends IdentityOptions {
 	outputFile?: string;
@@ -265,15 +265,23 @@ class GenerateCtrfReport implements Reporter {
 		};
 
 		if (this.reporterConfigOptions.minimal === false) {
-			const failureDetails = this.extractFailureDetailsFromText(
+			const hasFailedAssertions = testResult.testResults.some(
+				(result) => result.status === "failed",
+			);
+			// Jest's failureMessage also contains assertion output. Only use it
+			// when it cannot duplicate an already-emitted failed assertion.
+			const failureDetails = this.extractTestExecErrorDetails(
 				testResult.testExecError?.stack ||
-					testResult.failureMessage ||
 					testResult.testExecError?.message ||
+					(!hasFailedAssertions ? testResult.failureMessage : "") ||
 					"",
 			);
 			test.message =
 				failureDetails.message ||
-				testResult.testExecError?.message.replace(colorCodesPattern, "") ||
+				(testResult.testExecError?.message ?? "").replace(
+					testExecErrorColorCodesPattern,
+					"",
+				) ||
 				"Test suite failed to run";
 			if (failureDetails.trace) {
 				test.trace = failureDetails.trace;
@@ -282,6 +290,7 @@ class GenerateCtrfReport implements Reporter {
 			test.type = this.reporterConfigOptions.testType ?? "unit";
 			test.filePath = testResult.testFilePath;
 			test.retries = 0;
+			test.flaky = false;
 			test.suite = [fileName];
 		}
 
@@ -289,22 +298,39 @@ class GenerateCtrfReport implements Reporter {
 	}
 
 	extractFailureDetails(testResult: AssertionResult): Partial<CtrfTestBase> {
+		const messageStackTracePattern = /^\s{4}at/mu;
+		// eslint-disable-next-line no-control-regex
+		const colorCodesPattern = /\x1b\[\d+m/gmu;
+
 		if (
 			testResult.status === "failed" &&
 			testResult.failureMessages !== undefined
 		) {
-			return this.extractFailureDetailsFromText(
-				testResult.failureMessages.join("\n"),
-			);
+			const failureDetails: Partial<CtrfTestBase> = {};
+			const joinedMessages = testResult.failureMessages.join("\n");
+			const match = joinedMessages.match(messageStackTracePattern);
+			failureDetails.message = joinedMessages
+				.slice(0, match?.index)
+				.replace(colorCodesPattern, "");
+
+			failureDetails.trace = joinedMessages
+				.slice(match?.index)
+				.split("\n")
+				.map((line) => line.trim())
+				.join("\n");
+			return failureDetails;
 		}
 		return {};
 	}
 
-	private extractFailureDetailsFromText(
+	private extractTestExecErrorDetails(
 		failureText: string,
 	): Partial<CtrfTestBase> {
-		const cleanedFailureText = failureText.replace(colorCodesPattern, "");
-		const match = cleanedFailureText.match(messageStackTracePattern);
+		const cleanedFailureText = failureText.replace(
+			testExecErrorColorCodesPattern,
+			"",
+		);
+		const match = cleanedFailureText.match(testExecErrorStackTracePattern);
 		const failureDetails: Partial<CtrfTestBase> = {
 			message: cleanedFailureText.slice(0, match?.index),
 		};
