@@ -171,21 +171,20 @@ function workerContext() {
 	}));
 	return { samples: [sample] };
 }
-test("exceptions / exact worker loss matches; partial and full fixes fail", () => {
+test("worker metadata / missing and partial payloads fail; complete payloads pass", () => {
 	const entry = property("results.tests[].extra");
-	assert.equal(
-		runConformance(entry, workerContext(), "integration").issue,
-		"worker-metadata-loss",
-	);
+	assert.throws(() => runConformance(entry, workerContext(), "integration"));
 	const context = workerContext();
 	context.samples[0].report.results.tests[0].extra = { index: 0 };
 	assert.throws(() => runConformance(entry, context, "integration"));
-	for (const [index, test] of context.samples[0].report.results.tests.entries())
-		test.extra = { index };
-	assert.throws(
-		() => runConformance(entry, context, "integration"),
-		/Unexpected pass/,
-	);
+	for (const [
+		index,
+		result,
+	] of context.samples[0].report.results.tests.entries())
+		result.extra = { index };
+	runConformance(entry, context, "integration");
+	context.samples[0].report.results.tests[0].extra.index = -1;
+	assert.throws(() => runConformance(entry, context, "integration"));
 });
 test("reporting / removed build-number labels remain ordinary results", () => {
 	const name =

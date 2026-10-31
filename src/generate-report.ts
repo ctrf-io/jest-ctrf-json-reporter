@@ -24,6 +24,7 @@ import { CURRENT_SPEC_VERSION } from "ctrf";
 import * as fs from "node:fs";
 import path from "node:path";
 import * as crypto from "node:crypto";
+import { MetadataTransport } from "./metadata-transport";
 import { consumeTestMetadata } from "./storage";
 
 interface ReporterConfigOptions extends IdentityOptions {
@@ -125,8 +126,10 @@ class GenerateCtrfReport implements Reporter {
 	}
 
 	private runStarted = false;
+	private readonly metadataTransport = new MetadataTransport();
 
 	onRunStart(): void {
+		this.metadataTransport.start();
 		if (this.runStarted) {
 			this.ctrfReport.reportId = crypto.randomUUID();
 			this.ctrfReport.timestamp = new Date().toISOString();
@@ -163,7 +166,11 @@ class GenerateCtrfReport implements Reporter {
 
 	onRunComplete(): void {
 		this.ctrfReport.results.summary.stop = Date.now();
-		this.writeReportToFile(this.ctrfReport);
+		try {
+			this.writeReportToFile(this.ctrfReport);
+		} finally {
+			this.metadataTransport.finish();
+		}
 	}
 
 	private setFilename(filename: string): void {
@@ -178,15 +185,19 @@ class GenerateCtrfReport implements Reporter {
 		testResult: TestResult,
 		projectScope = "",
 	): void {
+		const transported = this.metadataTransport.consume(
+			testResult.testFilePath,
+			projectScope,
+		);
 		testResult.testResults.forEach((testCaseResult) => {
 			// Look up any runtime metadata stored by the environment
-			const runtimeMetadata = consumeTestMetadata(
-				JSON.stringify([
-					testResult.testFilePath,
-					projectScope,
-					testCaseResult.fullName,
-				]),
-			);
+			const key = JSON.stringify([
+				testResult.testFilePath,
+				projectScope,
+				testCaseResult.fullName,
+			]);
+			const localMetadata = consumeTestMetadata(key);
+			const runtimeMetadata = transported.get(key) ?? localMetadata;
 
 			const test: CtrfTestBase = {
 				testId: testIdentity(
