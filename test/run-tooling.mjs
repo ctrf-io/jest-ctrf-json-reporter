@@ -20,6 +20,7 @@ try {
 			"--test-reporter=./tests/standard/conformance/reporters/node.mjs",
 			"--test-reporter-destination=stdout",
 			"test/conformance-tooling.test.mjs",
+			"test/worker-metadata.test.mjs",
 		],
 		{
 			cwd: root,

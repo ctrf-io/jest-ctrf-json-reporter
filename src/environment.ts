@@ -1,3 +1,4 @@
+import { currentMetadataChannels, publishMetadata } from "./metadata-transport";
 import { projectIdentity } from "./identity";
 /**
  * CTRF Jest Environment
@@ -124,6 +125,8 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 		private testPath: string;
 		private sourceTestPath: string;
 		private projectScope: string;
+		private transportProject: string;
+		private metadataChannels = currentMetadataChannels();
 		private config: CtrfJestConfig;
 		private runContext: RunContext = {
 			executables: [],
@@ -145,6 +148,7 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 			this.testPath = path.relative(projectConfig.rootDir, context.testPath);
 			this.sourceTestPath = path.resolve(context.testPath);
 			this.projectScope = projectIdentity(projectConfig.displayName);
+			this.transportProject = projectConfig.id ?? this.projectScope;
 		}
 
 		async setup(): Promise<void> {
@@ -423,6 +427,7 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 		}
 
 		private handleRunFinish(): void {
+			const records: [string, TestMetadata][] = [];
 			// Store metadata for each test so the reporter can consume it
 			// The key is the test's fullName which matches what Jest Reporter receives
 			for (const [_id, testData] of this.runContext.tests) {
@@ -430,13 +435,22 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 				// Jest uses: "describe block > nested describe > test name"
 				const fullName = testData.fullName.replace(`${this.testPath} > `, "");
 
-				storeTestMetadata(
-					JSON.stringify([this.sourceTestPath, this.projectScope, fullName]),
-					{
-						extra: { ...testData.metadata.extra },
-					},
-				);
+				const key = JSON.stringify([
+					this.sourceTestPath,
+					this.projectScope,
+					fullName,
+				]);
+				const metadata = { extra: { ...testData.metadata.extra } };
+				// Preserve the existing in-process storage API as well as worker transport.
+				storeTestMetadata(key, metadata);
+				records.push([key, metadata]);
 			}
+			publishMetadata(
+				this.metadataChannels,
+				this.sourceTestPath,
+				this.transportProject,
+				records,
+			);
 		}
 	};
 }
