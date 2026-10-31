@@ -1,4 +1,4 @@
-import { currentMetadataChannel, publishMetadata } from "./metadata-transport";
+import { currentMetadataChannels, publishMetadata } from "./metadata-transport";
 import { projectIdentity } from "./identity";
 /**
  * CTRF Jest Environment
@@ -125,7 +125,8 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 		private testPath: string;
 		private sourceTestPath: string;
 		private projectScope: string;
-		private metadataChannel = currentMetadataChannel();
+		private transportProject: string;
+		private metadataChannels = currentMetadataChannels();
 		private config: CtrfJestConfig;
 		private runContext: RunContext = {
 			executables: [],
@@ -147,6 +148,7 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 			this.testPath = path.relative(projectConfig.rootDir, context.testPath);
 			this.sourceTestPath = path.resolve(context.testPath);
 			this.projectScope = projectIdentity(projectConfig.displayName);
+			this.transportProject = projectConfig.id ?? this.projectScope;
 		}
 
 		async setup(): Promise<void> {
@@ -444,9 +446,9 @@ export function createCtrfJestEnvironment<T extends typeof JestEnvironment>(
 				records.push([key, metadata]);
 			}
 			publishMetadata(
-				this.metadataChannel,
+				this.metadataChannels,
 				this.sourceTestPath,
-				this.projectScope,
+				this.transportProject,
 				records,
 			);
 		}

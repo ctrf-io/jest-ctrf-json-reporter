@@ -21,20 +21,41 @@ const filename = (channel: string, file: string, project: string): string =>
 			.digest("hex")}.json`,
 	);
 
-export function currentMetadataChannel(): string | undefined {
-	const channel = process.env[CHANNEL];
-	return channel && /^[a-f0-9-]{36}$/.test(channel) ? channel : undefined;
+interface ActiveTransports {
+	channels: Set<string>;
+	previous?: string;
+}
+// Shared by ESM/CJS bundles and independently configured reporter instances.
+const registryKey = Symbol.for("ctrf.jest.metadataTransports");
+const registryGlobal = globalThis as typeof globalThis & {
+	[registryKey]?: ActiveTransports;
+};
+registryGlobal[registryKey] ??= { channels: new Set() };
+const active = registryGlobal[registryKey];
+const encodedChannels = (): string => JSON.stringify([...active.channels]);
+
+export function currentMetadataChannels(): string[] {
+	try {
+		const channels: unknown = JSON.parse(process.env[CHANNEL] ?? "[]");
+		return Array.isArray(channels)
+			? channels.filter(
+					(channel): channel is string =>
+						typeof channel === "string" && /^[a-f0-9-]{36}$/.test(channel),
+				)
+			: [];
+	} catch {
+		return [];
+	}
 }
 
 // A channel lasts for the reporter lifetime so reused watch workers keep it.
 export class MetadataTransport {
 	private readonly channel = randomUUID();
-	private previous: string | undefined;
 	start(): void {
-		if (process.env[CHANNEL] !== this.channel)
-			this.previous = process.env[CHANNEL];
+		if (active.channels.size === 0) active.previous = process.env[CHANNEL];
 		rmSync(directory(this.channel), { recursive: true, force: true });
-		process.env[CHANNEL] = this.channel;
+		active.channels.add(this.channel);
+		process.env[CHANNEL] = encodedChannels();
 	}
 	consume(file: string, project: string): Map<string, TestMetadata> {
 		const source = filename(this.channel, file, project);
@@ -48,22 +69,28 @@ export class MetadataTransport {
 	}
 	finish(): void {
 		rmSync(directory(this.channel), { recursive: true, force: true });
-		if (process.env[CHANNEL] === this.channel) {
-			if (this.previous === undefined) delete process.env[CHANNEL];
-			else process.env[CHANNEL] = this.previous;
+		const ownedEnvironment = process.env[CHANNEL] === encodedChannels();
+		if (!active.channels.delete(this.channel)) return;
+		if (ownedEnvironment) {
+			if (active.channels.size > 0) process.env[CHANNEL] = encodedChannels();
+			else if (active.previous === undefined) delete process.env[CHANNEL];
+			else process.env[CHANNEL] = active.previous;
 		}
 	}
 }
 
 export function publishMetadata(
-	channel: string | undefined,
+	channels: readonly string[],
 	file: string,
 	project: string,
 	records: [string, TestMetadata][],
 ): void {
-	if (!channel) return;
-	mkdirSync(directory(channel), { recursive: true, mode: 0o700 });
-	writeFileSync(filename(channel, file, project), JSON.stringify(records), {
-		mode: 0o600,
-	});
+	if (channels.length === 0) return;
+	const serialized = JSON.stringify(records);
+	for (const channel of channels) {
+		mkdirSync(directory(channel), { recursive: true, mode: 0o700 });
+		writeFileSync(filename(channel, file, project), serialized, {
+			mode: 0o600,
+		});
+	}
 }

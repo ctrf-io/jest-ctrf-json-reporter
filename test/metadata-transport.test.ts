@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
 	MetadataTransport,
-	currentMetadataChannel,
+	currentMetadataChannels,
 	publishMetadata,
 } from "../src/metadata-transport";
 
@@ -15,9 +15,40 @@ describe("worker metadata handoff", () => {
 		transport.start();
 	});
 	afterEach(() => transport.finish());
+	for (const firstFinishesFirst of [true, false]) {
+		it(`broadcasts to independent consumers and restores channels (${firstFinishesFirst ? "forward" : "reverse"} cleanup)`, () => {
+			const original = process.env.CTRF_JEST_METADATA_CHANNEL;
+			const second = new MetadataTransport();
+			second.start();
+			try {
+				const channels = currentMetadataChannels();
+				publishMetadata(channels, "/shared", "project", [
+					["test", { extra: { owner: "team" } }],
+				]);
+				expect(
+					transport.consume("/shared", "project").get("test")?.extra,
+				).toEqual({ owner: "team" });
+				expect(second.consume("/shared", "project").get("test")?.extra).toEqual(
+					{ owner: "team" },
+				);
+				if (firstFinishesFirst) {
+					transport.finish();
+					expect(currentMetadataChannels()).toContain(channels.at(-1));
+				} else {
+					second.finish();
+					expect(process.env.CTRF_JEST_METADATA_CHANNEL).toBe(original);
+				}
+			} finally {
+				second.finish();
+				transport.finish();
+				transport.start();
+			}
+			expect(process.env.CTRF_JEST_METADATA_CHANNEL).toBe(original);
+		});
+	}
 	it("snapshots JSON metadata and consumes it once", () => {
 		const extra = { nested: { value: 1 }, list: ["first"], omitted: undefined };
-		publishMetadata(currentMetadataChannel(), "/file", "project", [
+		publishMetadata(currentMetadataChannels(), "/file", "project", [
 			["test", { extra }],
 		]);
 		extra.nested.value = 2;
@@ -32,7 +63,7 @@ describe("worker metadata handoff", () => {
 			["/b", "one"],
 			["/a", "two"],
 		]) {
-			publishMetadata(currentMetadataChannel(), file, project, [
+			publishMetadata(currentMetadataChannels(), file, project, [
 				["same", { extra: { file, project } }],
 			]);
 		}
@@ -48,33 +79,35 @@ describe("worker metadata handoff", () => {
 		}
 	});
 	it("reuses the channel but discards stale watch-run data", () => {
-		const channel = currentMetadataChannel();
-		publishMetadata(channel, "/a", "", [["stale", { extra: { old: true } }]]);
+		const channels = currentMetadataChannels();
+		publishMetadata(channels, "/a", "", [["stale", { extra: { old: true } }]]);
 		transport.finish();
 		transport.start();
-		expect(currentMetadataChannel()).toBe(channel);
+		expect(currentMetadataChannels()).toEqual(channels);
 		expect(transport.consume("/a", "").size).toBe(0);
 		// Simulate an existing worker still holding its original channel.
-		publishMetadata(channel, "/a", "", [["new", { extra: { fresh: true } }]]);
+		publishMetadata(channels, "/a", "", [["new", { extra: { fresh: true } }]]);
 		expect(transport.consume("/a", "").get("new")?.extra).toEqual({
 			fresh: true,
 		});
 	});
 	it("removes unconsumed data and restores the previous environment", () => {
-		const channel = currentMetadataChannel();
+		const channels = currentMetadataChannels();
+		const channel = channels.at(-1);
 		const dir = path.join(tmpdir(), `ctrf-jest-${channel}`);
-		publishMetadata(channel, "/a", "", [["test", { extra: {} }]]);
+		publishMetadata(channels, "/a", "", [["test", { extra: {} }]]);
 		expect(readdirSync(dir)).toHaveLength(1);
 		transport.finish();
 		expect(existsSync(dir)).toBe(false);
-		expect(currentMetadataChannel()).not.toBe(channel);
+		expect(currentMetadataChannels()).not.toContain(channel);
 	});
 	it("cleans the handoff even when final report generation throws", () => {
 		const reporter = new Reporter({} as never, {}, {} as never);
 		reporter.onRunStart();
-		const channel = currentMetadataChannel();
+		const channels = currentMetadataChannels();
+		const channel = channels.at(-1);
 		const dir = path.join(tmpdir(), `ctrf-jest-${channel}`);
-		publishMetadata(channel, "/a", "", [["test", { extra: {} }]]);
+		publishMetadata(channels, "/a", "", [["test", { extra: {} }]]);
 		(
 			reporter as unknown as { writeReportToFile: () => void }
 		).writeReportToFile = () => {
@@ -82,6 +115,6 @@ describe("worker metadata handoff", () => {
 		};
 		expect(() => reporter.onRunComplete()).toThrow("write failed");
 		expect(existsSync(dir)).toBe(false);
-		expect(currentMetadataChannel()).not.toBe(channel);
+		expect(currentMetadataChannels()).not.toContain(channel);
 	});
 });

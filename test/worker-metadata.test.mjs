@@ -143,3 +143,117 @@ test.todo('todo');
 		});
 	}
 }
+
+for (const displayName of [undefined, "shared"]) {
+	for (const workers of [false, true]) {
+		test(`runtime metadata / ${displayName ?? "unnamed"} projects with two mixed-format reporters (${workers ? "workers" : "in band"})`, () => {
+			const dir = mkdtempSync(
+				path.join(tmpdir(), "ctrf-jest-project-regression-"),
+			);
+			try {
+				for (const project of ["one", "two"])
+					writeFileSync(
+						path.join(dir, `${project}.cjs`),
+						`global.PROJECT=${JSON.stringify(project)};`,
+					);
+				writeFileSync(
+					path.join(dir, "case.test.cjs"),
+					`
+const {extra}=require(${JSON.stringify(path.join(root, "dist/runtime.cjs"))});
+require('node:fs').writeFileSync(require('node:path').join(${JSON.stringify(dir)}, PROJECT+'.pid'),String(process.pid));
+test('case '+PROJECT,()=>extra({project:PROJECT}));
+`,
+				);
+				// Both workers publish before either result reaches the reporters.
+				writeFileSync(
+					path.join(dir, "environment.cjs"),
+					`
+const Base=require(${JSON.stringify(path.join(root, "dist/environment.cjs"))}).default;
+const fs=require('node:fs'),path=require('node:path');
+module.exports=class extends Base {
+ constructor(config,context){super(config,context);this.project=config.projectConfig.testEnvironmentOptions.project;}
+ async teardown(){
+  await super.teardown();
+  if(!${workers})return;
+  fs.writeFileSync(path.join(${JSON.stringify(dir)},this.project+'.ready'),'');
+  const deadline=Date.now()+10000;
+  while(!['one','two'].every(p=>fs.existsSync(path.join(${JSON.stringify(dir)},p+'.ready')))){
+   if(Date.now()>deadline)throw Error('Both workers must publish before consuming');
+   await new Promise(resolve=>setTimeout(resolve,10));
+  }
+ }
+};
+`,
+				);
+				const config = {
+					rootDir: dir,
+					workerIdleMemoryLimit: workers ? "512MB" : undefined,
+					projects: ["one", "two"].map((project) => ({
+						rootDir: dir,
+						displayName,
+						testMatch: ["<rootDir>/case.test.cjs"],
+						setupFiles: [path.join(dir, `${project}.cjs`)],
+						testEnvironment: path.join(dir, "environment.cjs"),
+						testEnvironmentOptions: { project },
+					})),
+					reporters: ["cjs", "js"].map((extension) => [
+						path.join(root, `dist/index.${extension}`),
+						{ outputDir: dir, outputFile: `${extension}.json` },
+					]),
+				};
+				const configPath = path.join(dir, "jest.config.cjs");
+				writeFileSync(configPath, `module.exports=${JSON.stringify(config)};`);
+				// runCLI also lets us assert the original environment is restored.
+				const runner = path.join(dir, "run.cjs");
+				writeFileSync(
+					runner,
+					`
+const assert=require('node:assert/strict');
+const {runCLI}=require(${JSON.stringify(path.join(root, "node_modules/jest"))});
+(async()=>{
+ const original=process.env.CTRF_JEST_METADATA_CHANNEL;
+ const {results}=await runCLI({config:${JSON.stringify(configPath)},${workers ? "maxWorkers:2" : "runInBand:true"}},[${JSON.stringify(dir)}]);
+ assert.equal(results.success,true);
+ assert.equal(process.env.CTRF_JEST_METADATA_CHANNEL,original);
+})().catch(error=>{console.error(error);process.exitCode=1});
+`,
+				);
+				const run = spawnSync(process.execPath, [runner], {
+					cwd: dir,
+					encoding: "utf8",
+					timeout: 30000,
+					env: {
+						...process.env,
+						CTRF_JEST_METADATA_CHANNEL: "restore-original-value",
+						FORCE_COLOR: "0",
+					},
+				});
+				assert.ifError(run.error);
+				assert.equal(run.status, 0, run.stdout + run.stderr);
+				for (const extension of ["cjs", "js"]) {
+					const report = JSON.parse(
+						readFileSync(path.join(dir, `${extension}.json`), "utf8"),
+					);
+					validateStrict(report);
+					assert.equal(report.results.tests.length, 2);
+					for (const project of ["one", "two"])
+						assert.deepEqual(
+							report.results.tests.find(
+								(result) => result.name === `case ${project}`,
+							)?.extra,
+							{ project },
+						);
+				}
+				const pids = ["one", "two"].map((project) =>
+					Number(readFileSync(path.join(dir, `${project}.pid`), "utf8")),
+				);
+				if (workers) {
+					assert.equal(new Set(pids).size, 2);
+					assert.ok(pids.every((pid) => pid !== run.pid));
+				} else assert.deepEqual(pids, [run.pid, run.pid]);
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		});
+	}
+}

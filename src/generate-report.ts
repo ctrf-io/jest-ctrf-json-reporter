@@ -160,6 +160,7 @@ class GenerateCtrfReport implements Reporter {
 		this.updateCtrfTestResultsFromTestResult(
 			testResult,
 			projectIdentity(_test.context?.config.displayName),
+			_test.context?.config.id,
 		);
 		this.updateTotalsFromTestResult(testResult);
 	}
@@ -184,10 +185,11 @@ class GenerateCtrfReport implements Reporter {
 	private updateCtrfTestResultsFromTestResult(
 		testResult: TestResult,
 		projectScope = "",
+		transportProject = projectScope,
 	): void {
 		const transported = this.metadataTransport.consume(
 			testResult.testFilePath,
-			projectScope,
+			transportProject,
 		);
 		testResult.testResults.forEach((testCaseResult) => {
 			// Look up any runtime metadata stored by the environment
