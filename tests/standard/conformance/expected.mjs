@@ -39,7 +39,12 @@ export function expectedReport(native, options = {}) {
 		summary[status] = tests.filter((test) => test.status === status).length;
 	const environment = Object.fromEntries(
 		Object.keys(configuredOptions)
-			.filter((key) => key !== "runId" && options[key] !== undefined)
+			.filter(
+				(key) =>
+					key !== "runId" &&
+					options[key] !== undefined &&
+					(key !== "buildNumber" || Number.isInteger(options[key])),
+			)
 			.map((key) => [key, options[key]]),
 	);
 	return {
