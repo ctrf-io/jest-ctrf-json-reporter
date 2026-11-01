@@ -34,33 +34,33 @@ By standardizing test results, reports can be validated, merged, compared, and a
 
 ```json
 {
-  "results": {
-    "tool": {
-      "name": "jest"
-    },
-    "summary": {
-      "tests": 1,
-      "passed": 1,
-      "failed": 0,
-      "pending": 0,
-      "skipped": 0,
-      "other": 0,
-      "start": 1706828654274,
-      "stop": 1706828655782
-    },
-    "tests": [
-      {
-        "name": "ctrf should generate the same report with any tool",
-        "status": "passed",
-        "duration": 100
-      }
-    ],
-    "environment": {
-      "appName": "MyApp",
-      "buildName": "MyBuild",
-      "buildNumber": 1
-    }
-  }
+	"results": {
+		"tool": {
+			"name": "jest"
+		},
+		"summary": {
+			"tests": 1,
+			"passed": 1,
+			"failed": 0,
+			"pending": 0,
+			"skipped": 0,
+			"other": 0,
+			"start": 1706828654274,
+			"stop": 1706828655782
+		},
+		"tests": [
+			{
+				"name": "ctrf should generate the same report with any tool",
+				"status": "passed",
+				"duration": 100
+			}
+		],
+		"environment": {
+			"appName": "MyApp",
+			"buildName": "MyBuild",
+			"buildNumber": 1
+		}
+	}
 }
 ```
 
@@ -128,21 +128,21 @@ reporter: [
 
 The test object in the report includes the following [CTRF properties](https://ctrf.io/docs/schema/test):
 
-| Name        | Type    | Required | Details                                                                             |
-| ----------- | ------- | -------- | ----------------------------------------------------------------------------------- |
-| `name`      | String  | Required | The name of the test.                                                               |
-| `status`    | String  | Required | The outcome of the test. One of: `passed`, `failed`, `skipped`, `pending`, `other`. |
-| `duration`  | Number  | Required | The time taken for the test execution, in milliseconds.                             |
-| `message`   | String  | Optional | The failure message if the test failed.                                             |
-| `trace`     | String  | Optional | The stack trace captured if the test failed.                                        |
-| `suite`     | Array of Strings | Optional | The ordered suite hierarchy from file to immediate parent.                         |
-| `message`   | String  | Optional | The failure message if the test failed.                                             |
-| `trace`     | String  | Optional | The stack trace captured if the test failed.                                        |
-| `rawStatus` | String  | Optional | The original jest status of the test before mapping to CTRF status.                 |
-| `type`      | String  | Optional | The type of test (e.g., `unit`, `component`).                                       |
-| `filepath`  | String  | Optional | The file path where the test is located in the project.                             |
-| `retries`   | Number  | Optional | The number of retries attempted for the test.                                       |
-| `flaky`     | Boolean | Optional | Indicates whether the test result is flaky.                                         |
+| Name        | Type             | Required | Details                                                                             |
+| ----------- | ---------------- | -------- | ----------------------------------------------------------------------------------- |
+| `name`      | String           | Required | The name of the test.                                                               |
+| `status`    | String           | Required | The outcome of the test. One of: `passed`, `failed`, `skipped`, `pending`, `other`. |
+| `duration`  | Number           | Required | The time taken for the test execution, in milliseconds.                             |
+| `message`   | String           | Optional | The failure message if the test failed.                                             |
+| `trace`     | String           | Optional | The stack trace captured if the test failed.                                        |
+| `suite`     | Array of Strings | Optional | The ordered suite hierarchy from file to immediate parent.                          |
+| `message`   | String           | Optional | The failure message if the test failed.                                             |
+| `trace`     | String           | Optional | The stack trace captured if the test failed.                                        |
+| `rawStatus` | String           | Optional | The original jest status of the test before mapping to CTRF status.                 |
+| `type`      | String           | Optional | The type of test (e.g., `unit`, `component`).                                       |
+| `filepath`  | String           | Optional | The file path where the test is located in the project.                             |
+| `retries`   | Number           | Optional | The number of retries attempted for the test.                                       |
+| `flaky`     | Boolean          | Optional | Indicates whether the test result is flaky.                                         |
 
 ## Extra
 
@@ -155,41 +155,41 @@ See the [CTRF extra specification](https://www.ctrf.io/docs/specification/extra)
 Import `ctrf` from the reporter and call `ctrf.extra()` inside any test:
 
 ```javascript
-const { ctrf } = require('jest-ctrf-json-reporter')
+const { ctrf } = require("jest-ctrf-json-reporter");
 
-test('checkout flow', () => {
-  ctrf.extra({ owner: 'checkout-team', priority: 'P1' })
+test("checkout flow", () => {
+	ctrf.extra({ owner: "checkout-team", priority: "P1" });
 
-  // ... test logic ...
-})
+	// ... test logic ...
+});
 ```
 
 You can call it multiple times in a single test:
 
 ```javascript
-test('search results', () => {
-  ctrf.extra({ owner: 'search-team' })
-  ctrf.extra({ feature: 'search', environment: 'staging' })
+test("search results", () => {
+	ctrf.extra({ owner: "search-team" });
+	ctrf.extra({ feature: "search", environment: "staging" });
 
-  // ... test logic ...
+	// ... test logic ...
 
-  ctrf.extra({ customMetric: 'some-value' })
-})
+	ctrf.extra({ customMetric: "some-value" });
+});
 ```
 
 The resulting `extra` field in the CTRF report:
 
 ```json
 {
-  "name": "search results",
-  "status": "passed",
-  "duration": 300,
-  "extra": {
-    "owner": "search-team",
-    "feature": "search",
-    "environment": "staging",
-    "customMetric": "some-value"
-  }
+	"name": "search results",
+	"status": "passed",
+	"duration": 300,
+	"extra": {
+		"owner": "search-team",
+		"feature": "search",
+		"environment": "staging",
+		"customMetric": "some-value"
+	}
 }
 ```
 
