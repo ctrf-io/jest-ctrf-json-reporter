@@ -144,6 +144,17 @@ The test object in the report includes the following [CTRF properties](https://c
 | `retries`   | Number           | Optional | The number of retries attempted for the test.                                       |
 | `flaky`     | Boolean          | Optional | Indicates whether the test result is flaky.                                         |
 
+### Suite execution errors
+
+When Jest reports a suite-level `testExecError`, the reporter adds a failed
+test named `<file> (test suite failed to run)`. This preserves failures such as
+syntax and transform errors, missing modules, worker crashes, and setup or
+teardown errors even when Jest produces no failed assertion result. Detailed
+reports identify these synthetic entries with `rawStatus: "testExecError"`,
+`retries: 0`, and `flaky: false`. Because no assertion executed for the
+synthetic result, it does not inherit assertion runtime metadata or `extra`
+fields.
+
 ## Extra
 
 The `extra` field lets you attach custom metadata to individual test results at runtime.
