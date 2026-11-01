@@ -78,7 +78,7 @@
 		"url": "https://github.com/ctrf-io/.github/blob/main/SECURITY.md"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.6.3",
+		"@biomejs/biome": "2.6.4",
 		"@types/jest": "30.0.0",
 		"@types/node": "26.6.5",
 		"@typescript/native": "npm:typescript@7.0.2",
