@@ -45,9 +45,23 @@ export function unitContext() {
 				testResults: assertions,
 			},
 		];
+		const suiteExecError = [
+			{
+				testFilePath: path.resolve("fixture/suite-load-error.test.cjs"),
+				testResults: [makeCase("passes before teardown", "passed")],
+				testExecError: {
+					message: "fixture teardown failure",
+					stack:
+						"Error: fixture teardown failure\n    at fixture (suite-load-error.test.cjs:1:1)",
+				},
+				failureMessage:
+					"Error: fixture teardown failure\n    at fixture (suite-load-error.test.cjs:1:1)",
+			},
+		];
 		for (const [name, options, files] of [
 			["full", configuredOptions, native],
 			["repeated", configuredOptions, native],
+			["suite-exec-error", configuredOptions, suiteExecError],
 			["minimal", { minimal: true }, native],
 			["defaults", {}, native],
 			["empty-run-id", { runId: "" }, native],
@@ -102,7 +116,11 @@ export function unitContext() {
 			reporter.onRunComplete();
 			const bytes = readFileSync(path.join(directory, `${name}.json`));
 			const expected = expectedReport(files, options);
-			if (files.length)
+			if (
+				files.some((file) =>
+					file.testResults.some((test) => test.fullName === "suite pass"),
+				)
+			)
 				expected.results.tests[0].extra = {
 					owner: "fixture",
 					nested: { value: 1 },

@@ -172,6 +172,61 @@ describe("GenerateCtrfReport", () => {
 				expect(updatedTestResult.status).toBe("other");
 			},
 		);
+
+		it("records a suite-level execution error as a failed test", () => {
+			const mockResult = {
+				testFilePath: "/path/to/syntax-error.test.ts",
+				testResults: [
+					{
+						title: "passes before the suite error",
+						fullName: "passes before the suite error",
+						ancestorTitles: [],
+						duration: 1,
+						status: "passed",
+					},
+				],
+				testExecError: {
+					message: "SyntaxError: Unexpected token",
+					stack: "SyntaxError: Unexpected token\n    at transform.ts:1:1",
+				},
+			} as unknown as TestResult;
+
+			reporter.onTestResult({} as never, mockResult);
+
+			expect(reporter.ctrfReport.results.tests).toHaveLength(2);
+			expect(reporter.ctrfReport.results.tests[1]).toMatchObject({
+				name: "syntax-error.test.ts (test suite failed to run)",
+				duration: 0,
+				status: "failed",
+			});
+			expect(reporter.ctrfReport.results.tests[1].rawStatus).toBeUndefined();
+			expect(reporter.ctrfReport.results.summary).toMatchObject({
+				tests: 2,
+				passed: 1,
+				failed: 1,
+			});
+			expect(() =>
+				validateStrict(reporter.ctrfReport, {
+					specVersion: CURRENT_SPEC_VERSION,
+				}),
+			).not.toThrow();
+		});
+
+		it("does not record a suite-level failure for a null execution error", () => {
+			const mockResult = {
+				testFilePath: "/path/to/passing.test.ts",
+				testResults: [],
+				testExecError: null,
+			} as unknown as TestResult;
+
+			reporter.onTestResult({} as never, mockResult);
+
+			expect(reporter.ctrfReport.results.tests).toHaveLength(0);
+			expect(reporter.ctrfReport.results.summary).toMatchObject({
+				tests: 0,
+				failed: 0,
+			});
+		});
 	});
 
 	describe("updateTotalsFromTestResult", () => {
@@ -289,6 +344,137 @@ describe("GenerateDetailedCtrfReport", () => {
 		).not.toThrow();
 	});
 
+	it("preserves details for a suite-level execution error", () => {
+		const mockResult = {
+			testFilePath: "/path/to/module-load-error.test.ts",
+			testResults: [],
+			testExecError: {
+				message: "\u001b[1;31mError: boom while loading\u001b[0m",
+				stack:
+					"\u001b[1;31mError: boom while loading\u001b[0m\n    at module-load-error.test.ts:1:1",
+			},
+		} as unknown as TestResult;
+
+		reporter.onTestResult({} as never, mockResult);
+
+		expect(reporter.ctrfReport.results.tests[0]).toMatchObject({
+			name: "module-load-error.test.ts (test suite failed to run)",
+			status: "failed",
+			rawStatus: "testExecError",
+			message: "Error: boom while loading\n",
+			trace: "at module-load-error.test.ts:1:1",
+			type: "unit",
+			filePath: "/path/to/module-load-error.test.ts",
+			retries: 0,
+			flaky: false,
+			suite: ["module-load-error.test.ts"],
+		});
+		expect(reporter.ctrfReport.results.summary).toMatchObject({
+			tests: 1,
+			failed: 1,
+		});
+		expect(() =>
+			validateStrict(reporter.ctrfReport, {
+				specVersion: CURRENT_SPEC_VERSION,
+			}),
+		).not.toThrow();
+	});
+
+	it("uses a safe fallback when execution error details are empty", () => {
+		const mockResult = {
+			testFilePath: "/path/to/empty-error.test.ts",
+			failureMessage: "",
+			testResults: [],
+			testExecError: {},
+		} as unknown as TestResult;
+
+		reporter.onTestResult({} as never, mockResult);
+
+		expect(reporter.ctrfReport.results.tests[0]).toMatchObject({
+			name: "empty-error.test.ts (test suite failed to run)",
+			status: "failed",
+			message: "Test suite failed to run",
+		});
+		expect(reporter.ctrfReport.results.tests[0].trace).toBeUndefined();
+	});
+
+	it("does not duplicate failed assertion output in an execution error", () => {
+		const mockResult = {
+			testFilePath: "/path/to/failed-and-teardown-error.test.ts",
+			failureMessage:
+				"Error: assertion failed\n    at assertion.test.ts:1:1\n\nError: teardown failed",
+			testExecError: {
+				message: "",
+				stack: "",
+			},
+			testResults: [
+				{
+					title: "fails before teardown",
+					fullName: "fails before teardown",
+					ancestorTitles: [],
+					duration: 1,
+					status: "failed",
+					failureMessages: [
+						"Error: assertion failed\n    at assertion.test.ts:1:1",
+					],
+				},
+			],
+		} as unknown as TestResult;
+
+		reporter.onTestResult({} as never, mockResult);
+
+		expect(reporter.ctrfReport.results.tests).toHaveLength(2);
+		expect(reporter.ctrfReport.results.tests[1]).toMatchObject({
+			status: "failed",
+			message: "Test suite failed to run",
+		});
+		expect(reporter.ctrfReport.results.summary).toMatchObject({
+			tests: 2,
+			failed: 2,
+		});
+	});
+
+	it("adds a failed record when teardown fails after passing tests", () => {
+		const mockResult = {
+			testFilePath: "/path/to/after-all-error.test.ts",
+			failureMessage:
+				"\u001b[31mError: boom in afterAll\u001b[39m\n    at after-all-error.test.ts:3:9",
+			testExecError: {
+				message: "",
+				stack: "",
+			},
+			testResults: [
+				{
+					title: "passes before teardown",
+					fullName: "passes before teardown",
+					ancestorTitles: [],
+					duration: 1,
+					status: "passed",
+				},
+			],
+		} as unknown as TestResult;
+
+		reporter.onTestResult({} as never, mockResult);
+
+		expect(reporter.ctrfReport.results.tests).toHaveLength(2);
+		expect(reporter.ctrfReport.results.tests[1]).toMatchObject({
+			name: "after-all-error.test.ts (test suite failed to run)",
+			status: "failed",
+			message: "Error: boom in afterAll\n",
+			trace: "at after-all-error.test.ts:3:9",
+		});
+		expect(reporter.ctrfReport.results.summary).toMatchObject({
+			tests: 2,
+			passed: 1,
+			failed: 1,
+		});
+		expect(() =>
+			validateStrict(reporter.ctrfReport, {
+				specVersion: CURRENT_SPEC_VERSION,
+			}),
+		).not.toThrow();
+	});
+
 	it("should update the ctrfReport message with error description from failureMessages on failed builds", () => {
 		const mockTestCaseResult = {
 			status: "failed" as Status,
@@ -312,6 +498,27 @@ describe("GenerateDetailedCtrfReport", () => {
 		expect(updatedTestResult.message).toBe(
 			'Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: "b"\nReceived: undefined\n',
 		);
+	});
+
+	it("preserves stackless assertion failure text in message and trace", () => {
+		const mockTestCaseResult = {
+			status: "failed" as Status,
+			fullName: "stackless failure",
+			ancestorTitles: [],
+			duration: 1,
+			failureMessages: ["Error: stackless failure"],
+		};
+		const mockResult = {
+			testFilePath: "/path/to/stackless.test.ts",
+			testResults: [mockTestCaseResult],
+		} as unknown as TestResult;
+
+		(reporter as any).updateCtrfTestResultsFromTestResult(mockResult);
+
+		expect(reporter.ctrfReport.results.tests[0]).toMatchObject({
+			message: "Error: stackless failure",
+			trace: "Error: stackless failure",
+		});
 	});
 
 	it("should update the ctrfReport trace with stack trace from failureMessage on failed builds", () => {

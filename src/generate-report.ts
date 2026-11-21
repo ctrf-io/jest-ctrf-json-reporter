@@ -27,6 +27,10 @@ import * as crypto from "node:crypto";
 import { MetadataTransport } from "./metadata-transport";
 import { consumeTestMetadata } from "./storage";
 
+const testExecErrorStackTracePattern = /^\s{4}at/mu;
+// eslint-disable-next-line no-control-regex
+const testExecErrorColorCodesPattern = /\x1b\[[\d;]*m/gmu;
+
 interface ReporterConfigOptions extends IdentityOptions {
 	outputFile?: string;
 	outputDir?: string;
@@ -241,6 +245,69 @@ class GenerateCtrfReport implements Reporter {
 
 			this.ctrfReport.results.tests.push(test);
 		});
+
+		if (testResult.testExecError) {
+			this.ctrfReport.results.tests.push(
+				this.buildTestExecErrorResult(testResult, projectScope),
+			);
+		}
+	}
+
+	private buildTestExecErrorResult(
+		testResult: TestResult,
+		projectScope: string,
+	): CtrfTestBase {
+		const fileName = path.basename(testResult.testFilePath);
+		const name = `${fileName} (test suite failed to run)`;
+		const test: CtrfTestBase = {
+			testId: testIdentity(
+				"jest",
+				{
+					name,
+					suite: [fileName],
+					variant: projectScope,
+					filePath: testResult.testFilePath,
+				},
+				this.reporterConfigOptions,
+			),
+			executionId: crypto.randomUUID(),
+			attemptId: crypto.randomUUID(),
+			name,
+			duration: 0,
+			status: "failed",
+		};
+
+		if (this.reporterConfigOptions.minimal === false) {
+			const hasFailedAssertions = testResult.testResults.some(
+				(result) => result.status === "failed",
+			);
+			// Jest's failureMessage also contains assertion output. Only use it
+			// when it cannot duplicate an already-emitted failed assertion.
+			const failureDetails = this.extractTestExecErrorDetails(
+				testResult.testExecError?.stack ||
+					testResult.testExecError?.message ||
+					(!hasFailedAssertions ? testResult.failureMessage : "") ||
+					"",
+			);
+			test.message =
+				failureDetails.message ||
+				(testResult.testExecError?.message ?? "").replace(
+					testExecErrorColorCodesPattern,
+					"",
+				) ||
+				"Test suite failed to run";
+			if (failureDetails.trace) {
+				test.trace = failureDetails.trace;
+			}
+			test.rawStatus = "testExecError";
+			test.type = this.reporterConfigOptions.testType ?? "unit";
+			test.filePath = testResult.testFilePath;
+			test.retries = 0;
+			test.flaky = false;
+			test.suite = [fileName];
+		}
+
+		return test;
 	}
 
 	extractFailureDetails(testResult: AssertionResult): Partial<CtrfTestBase> {
@@ -253,24 +320,41 @@ class GenerateCtrfReport implements Reporter {
 			testResult.failureMessages !== undefined
 		) {
 			const failureDetails: Partial<CtrfTestBase> = {};
-			if (testResult.failureMessages !== undefined) {
-				const joinedMessages = testResult.failureMessages.join("\n");
-				const match = joinedMessages.match(messageStackTracePattern);
-				failureDetails.message = joinedMessages
-					.slice(0, match?.index)
-					.replace(colorCodesPattern, "");
+			const joinedMessages = testResult.failureMessages.join("\n");
+			const match = joinedMessages.match(messageStackTracePattern);
+			failureDetails.message = joinedMessages
+				.slice(0, match?.index)
+				.replace(colorCodesPattern, "");
 
-				failureDetails.trace = joinedMessages
-					.slice(match?.index)
-					.split("\n")
-					.map((line) => {
-						return line.trim();
-					})
-					.join("\n");
-			}
+			failureDetails.trace = joinedMessages
+				.slice(match?.index)
+				.split("\n")
+				.map((line) => line.trim())
+				.join("\n");
 			return failureDetails;
 		}
 		return {};
+	}
+
+	private extractTestExecErrorDetails(
+		failureText: string,
+	): Partial<CtrfTestBase> {
+		const cleanedFailureText = failureText.replace(
+			testExecErrorColorCodesPattern,
+			"",
+		);
+		const match = cleanedFailureText.match(testExecErrorStackTracePattern);
+		const failureDetails: Partial<CtrfTestBase> = {
+			message: cleanedFailureText.slice(0, match?.index),
+		};
+		if (match) {
+			failureDetails.trace = cleanedFailureText
+				.slice(match.index)
+				.split("\n")
+				.map((line) => line.trim())
+				.join("\n");
+		}
+		return failureDetails;
 	}
 
 	private updateTotalsFromTestResult(testResult: TestResult): void {
@@ -279,6 +363,10 @@ class GenerateCtrfReport implements Reporter {
 			this.ctrfReport.results.summary[ctrfStatus]++;
 			this.ctrfReport.results.summary.tests++;
 		});
+		if (testResult.testExecError) {
+			this.ctrfReport.results.summary.failed++;
+			this.ctrfReport.results.summary.tests++;
+		}
 	}
 
 	private mapStatus(jestStatus: Status): TestStatus {

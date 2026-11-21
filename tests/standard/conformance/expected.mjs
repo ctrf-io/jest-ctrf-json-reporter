@@ -2,8 +2,8 @@ import path from "node:path";
 
 // Native assertion data is captured independently of the CTRF reporter.
 export function expectedReport(native, options = {}) {
-	const tests = native.flatMap((file) =>
-		file.testResults.map((test) => {
+	const tests = native.flatMap((file) => {
+		const assertionTests = file.testResults.map((test) => {
 			const status = ["passed", "failed", "skipped", "pending"].includes(
 				test.status,
 			)
@@ -32,8 +32,26 @@ export function expectedReport(native, options = {}) {
 					{ status, duration: test.duration ?? 0 },
 				],
 			};
-		}),
-	);
+		});
+		if (!file.testExecError) return assertionTests;
+		const fileName = path.basename(file.testFilePath);
+		const name = `${fileName} (test suite failed to run)`;
+		const executionError = {
+			name,
+			status: "failed",
+			duration: 0,
+		};
+		if (!options.minimal)
+			Object.assign(executionError, {
+				rawStatus: "testExecError",
+				filePath: file.testFilePath,
+				type: options.testType ?? "unit",
+				suite: [fileName],
+				retries: 0,
+				flaky: false,
+			});
+		return [...assertionTests, executionError];
+	});
 	const summary = { tests: tests.length };
 	for (const status of ["passed", "failed", "skipped", "pending", "other"])
 		summary[status] = tests.filter((test) => test.status === status).length;

@@ -82,6 +82,12 @@ export function integrationContext(root, diagnostics) {
 			{ name: "full", mode: "mixed", options: configuredOptions, exit: 1 },
 			{ name: "repeated", mode: "mixed", options: configuredOptions, exit: 1 },
 			{
+				name: "suite-exec-error",
+				mode: "suite-exec-error",
+				options: configuredOptions,
+				exit: 1,
+			},
+			{
 				name: "workers",
 				mode: "mixed",
 				options: configuredOptions,
